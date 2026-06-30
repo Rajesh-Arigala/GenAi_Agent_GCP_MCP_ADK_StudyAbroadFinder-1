@@ -11,28 +11,31 @@ from google.genai import types
 
 load_dotenv()
 
-TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
+GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
 
-tavily_toolset = McpToolset(
+maps_toolset = McpToolset(
     connection_params=StreamableHTTPConnectionParams(
-        url=f"https://mcp.tavily.com/mcp/?tavilyApiKey={TAVILY_API_KEY}"
+        url="https://mapstools.googleapis.com/mcp",
+        headers={
+            "X-Goog-Api-Key": GOOGLE_MAPS_API_KEY,
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream"
+        }
     )
 )
 
 AGENT_INSTRUCTION = """
 You are a Study Abroad Advisor.
 
-Use only Tavily MCP for web search.
+Use only Google Maps MCP.
 
-When the student asks about universities:
-1. Search the web using Tavily.
-2. Find top universities for the requested field and country.
-3. Summarize the top 3 universities.
-4. Include location, ranking if available, and why each university is strong.
-5. Do not use Scholarship MCP.
-6. Do not use Filesystem MCP.
-7. Do not use Google Maps MCP.
-8. Do not save files.
+When the student asks about a city or university location:
+1. Use Google Maps MCP to get current weather if available.
+2. Use Google Maps MCP to find nearby places of interest.
+3. Do not use Tavily.
+4. Do not use Scholarship MCP.
+5. Do not use Filesystem MCP.
+6. Do not save files.
 """
 
 agent = LlmAgent(
@@ -40,7 +43,7 @@ agent = LlmAgent(
     model="gemini-2.5-flash",
     instruction=AGENT_INSTRUCTION,
     tools=[
-        tavily_toolset,
+        maps_toolset,
     ]
 )
 
