@@ -134,11 +134,15 @@ Step 7 - Reply to the student:
 # Agent — include Maps toolset only if it connected successfully
 # ---------------------------------------------------------------------------
 
-_toolsets = [
-    tavily_toolset,
-    scholarship_toolset,
-    filesystem_toolset,
-]
+_toolsets = [tavily_toolset, scholarship_toolset, filesystem_toolset]
+if maps_toolset:
+    _toolsets.insert(1, maps_toolset)
+
+# _toolsets = [
+#     tavily_toolset,
+#     scholarship_toolset,
+#     filesystem_toolset,
+# ]
 
 agent = LlmAgent(
     name="study_abroad_advisor",
