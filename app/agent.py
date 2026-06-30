@@ -12,39 +12,35 @@ from google.genai import types
 
 load_dotenv()
 
-SCHOLARSHIP_SERVER = os.path.abspath(
-    os.path.join(
-        os.path.dirname(__file__),
-        "..",
-        "scholarship_mcp_server",
-        "scholarship_server.py"
-    )
+REPORTS_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "reports")
 )
 
-scholarship_toolset = McpToolset(
+os.makedirs(REPORTS_DIR, exist_ok=True)
+
+filesystem_toolset = McpToolset(
     connection_params=StdioConnectionParams(
         server_params=StdioServerParameters(
-            command="python",
-            args=[SCHOLARSHIP_SERVER]
+            command="npx",
+            args=["-y", "@modelcontextprotocol/server-filesystem", REPORTS_DIR]
         ),
         timeout=30
     )
 )
 
-AGENT_INSTRUCTION = """
+AGENT_INSTRUCTION = f"""
 You are a Study Abroad Advisor.
 
-Use only the Scholarship MCP tools.
+Use only the Filesystem MCP tool.
 
-When the student asks about universities:
-1. Give a general university recommendation from your own knowledge.
-2. Use get_scholarships for scholarship information.
-3. Use get_cost_of_living for cost estimates.
-4. Use get_visa_requirements for visa information.
-5. Do not use Tavily.
-6. Do not use Google Maps.
-7. Do not use Filesystem.
-8. Do not save files.
+When the student asks a question:
+1. Give a short study abroad recommendation from your own knowledge.
+2. Save a markdown report into this folder:
+   {REPORTS_DIR}
+3. Filename: filesystem_test_report.md
+4. Do not use Tavily.
+5. Do not use Google Maps.
+6. Do not use Scholarship MCP.
 """
 
 agent = LlmAgent(
@@ -52,7 +48,7 @@ agent = LlmAgent(
     model="gemini-2.5-flash",
     instruction=AGENT_INSTRUCTION,
     tools=[
-        scholarship_toolset,
+        filesystem_toolset,
     ]
 )
 
