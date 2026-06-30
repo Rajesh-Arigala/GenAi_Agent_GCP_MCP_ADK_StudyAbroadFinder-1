@@ -1,0 +1,324 @@
+# Section 2 — Project Objectives & Scope
+
+---
+
+# 2.1 Background
+
+The rapid advancement of Large Language Models (LLMs) has significantly improved conversational AI. Modern models such as Gemini, GPT, Claude, and others possess strong reasoning capabilities and can answer a wide range of general knowledge questions.
+
+However, a standalone LLM has important limitations:
+
+- It cannot reliably access real-time information.
+- It cannot execute external actions.
+- It cannot interact with enterprise systems.
+- It cannot retrieve organization-specific knowledge unless explicitly connected to external tools.
+- It cannot generate dynamic outputs such as reports or interact with third-party services on its own.
+
+These limitations become increasingly important when building production-grade AI applications.
+
+The objective of this project was to explore how these limitations can be overcome using the **Google Agent Development Kit (Google ADK)** together with the **Model Context Protocol (MCP)**.
+
+Rather than building another chatbot, this project focuses on building an **AI agent** capable of reasoning, selecting specialized tools, invoking external services, and combining their outputs into a coherent response.
+
+---
+
+# 2.2 Problem Statement
+
+Students planning to study abroad often need information from multiple independent sources.
+
+A typical student may ask:
+
+> *"I want to pursue Artificial Intelligence in Germany. Which universities should I consider? What scholarships are available? What is the cost of living? What visa requirements apply? What is the weather like? Which attractions are nearby?"*
+
+Answering this single question requires information from several domains:
+
+- University discovery
+- Program comparison
+- Scholarships
+- Visa regulations
+- Cost of living
+- Geographic information
+- Weather
+- Nearby attractions
+
+Traditionally, a student must visit multiple websites to gather this information.
+
+The goal of this project is to demonstrate that a single AI agent can orchestrate multiple specialized tools to provide a unified response.
+
+---
+
+# 2.3 Why Google ADK?
+
+Google ADK provides an orchestration framework that separates:
+
+- **Reasoning** (performed by the LLM)
+- **Execution** (performed by external tools)
+
+This architectural separation enables the language model to determine **what** needs to be done while allowing specialized systems to perform **how** it is done.
+
+Instead of embedding every capability inside the language model, ADK allows capabilities to be attached as reusable tools.
+
+This project uses ADK to validate this design philosophy in a practical application.
+
+---
+
+# 2.4 Why MCP (Model Context Protocol)?
+
+The Model Context Protocol (MCP) is an open protocol that standardizes communication between AI models and external tools.
+
+Rather than writing custom integrations for every service, MCP defines a consistent interface through which the AI agent can:
+
+- Discover available tools
+- Invoke tool functions
+- Exchange structured inputs and outputs
+- Combine results from multiple services
+
+This standardization significantly simplifies integration and improves portability.
+
+The project intentionally uses both:
+
+- Remote MCP servers
+- Local MCP servers
+
+to demonstrate different deployment models.
+
+---
+
+# 2.5 Why This Use Case?
+
+The Study Abroad domain was selected because it naturally requires information from multiple independent systems.
+
+A realistic recommendation involves:
+
+- Web search for universities
+- Scholarship databases
+- Visa information
+- Cost-of-living estimates
+- Geographic information
+- Weather services
+- Report generation
+
+This makes it an ideal scenario to evaluate multi-tool orchestration.
+
+The application therefore serves as an excellent proof of concept for enterprise AI workflows that require information aggregation from diverse sources.
+
+---
+
+# 2.6 Scope of the Project
+
+The implemented system covers the following capabilities.
+
+## University Discovery
+
+Identify leading universities for a given course and country.
+
+Example:
+
+- Artificial Intelligence
+- Machine Learning
+- Data Science
+- Computer Science
+
+---
+
+## Scholarship Information
+
+Retrieve scholarship opportunities associated with:
+
+- Universities
+- Countries
+- Academic programs
+
+---
+
+## Cost of Living
+
+Estimate monthly expenses including:
+
+- Rent
+- Food
+- Transportation
+- Miscellaneous costs
+
+---
+
+## Visa Guidance
+
+Provide information such as:
+
+- Student visa type
+- Required documents
+- Processing timelines
+- Work permissions
+
+---
+
+## Geographic Context
+
+Enrich recommendations with:
+
+- Current weather
+- Nearby attractions
+- Campus surroundings
+
+---
+
+## Report Generation
+
+Generate a structured Markdown report summarizing all retrieved information.
+
+---
+
+# 2.7 Technologies Evaluated
+
+The project intentionally evaluates multiple technical concepts simultaneously.
+
+These include:
+
+### AI Framework
+
+- Google Agent Development Kit (ADK)
+
+---
+
+### Foundation Model
+
+- Gemini 2.5 Flash
+
+---
+
+### MCP Communication
+
+- Streamable HTTP
+- STDIO
+
+---
+
+### Deployment
+
+- Local development
+- Docker
+- Render
+
+---
+
+### Programming
+
+- Python
+- Flask
+
+---
+
+### External Services
+
+- Tavily MCP
+- Google Maps MCP
+- Custom Scholarship MCP
+- Filesystem MCP
+
+---
+
+# 2.8 Architectural Goals
+
+The project was designed around the following architectural principles.
+
+### Modularity
+
+Each capability should exist as an independent MCP server.
+
+---
+
+### Separation of Concerns
+
+The language model should perform reasoning.
+
+External tools should perform execution.
+
+---
+
+### Extensibility
+
+Additional MCP servers should be attachable without redesigning the application.
+
+Examples include:
+
+- Flight booking
+- Accommodation search
+- Currency exchange
+- Insurance providers
+- Immigration assistance
+- Job market analysis
+
+---
+
+### Production Readiness
+
+The application should be deployable on a public cloud platform.
+
+---
+
+### Containerization
+
+The complete application should run consistently across environments using Docker.
+
+---
+
+# 2.9 Out of Scope
+
+The current implementation intentionally excludes:
+
+- User authentication
+- Database persistence
+- Payment processing
+- User profiles
+- Conversation memory
+- Multi-user session management
+- Enterprise RBAC
+- Monitoring dashboards
+- Logging pipelines
+- Persistent cloud storage
+- Horizontal auto-scaling
+
+These features are identified as future enhancements.
+
+---
+
+# 2.10 Success Criteria
+
+The project would be considered successful if it could demonstrate:
+
+✅ Integration of Google ADK
+
+✅ Successful communication with Gemini 2.5 Flash
+
+✅ Integration of multiple MCP servers
+
+✅ Communication using both Remote and Local MCP protocols
+
+✅ Successful deployment to Render
+
+✅ Successful Docker containerization
+
+✅ Multi-tool reasoning by the AI agent
+
+✅ Generation of structured reports
+
+✅ Reliable interaction with external services
+
+---
+
+# 2.11 Key Takeaways
+
+This project is not intended to demonstrate the capabilities of a single language model.
+
+Instead, it demonstrates a broader architectural pattern in which:
+
+- The LLM performs reasoning.
+- MCP servers provide specialized capabilities.
+- ADK orchestrates communication between them.
+- Docker ensures environment consistency.
+- Render provides cloud deployment.
+
+The Study Abroad Finder is therefore best understood as a reference implementation for **tool-augmented AI systems**, where intelligence emerges from the collaboration between a reasoning model and multiple specialized execution services rather than from the language model alone.
+
+This architectural approach is directly applicable to enterprise AI systems across domains such as healthcare, finance, legal services, education, travel, and customer support.

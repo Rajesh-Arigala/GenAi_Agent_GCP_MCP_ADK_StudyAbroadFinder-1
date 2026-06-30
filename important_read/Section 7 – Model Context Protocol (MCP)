@@ -1,0 +1,778 @@
+# Section 7 — Model Context Protocol (MCP)
+
+---
+
+# 7.1 Introduction
+
+The **Model Context Protocol (MCP)** is an open communication protocol that enables Large Language Models (LLMs) to interact with external tools, services, and data sources using a standardized interface.
+
+Before MCP, every AI application had to implement custom integrations for each external service.
+
+For example:
+
+```
+LLM
+
+↓
+
+Custom Python Code
+
+↓
+
+Google Maps API
+```
+
+Another service required another integration.
+
+```
+LLM
+
+↓
+
+Custom Code
+
+↓
+
+Tavily API
+```
+
+Another service required another implementation.
+
+```
+LLM
+
+↓
+
+Custom Code
+
+↓
+
+Database
+```
+
+As more tools were added, the application became increasingly difficult to maintain.
+
+MCP solves this problem by introducing a **common communication protocol** between AI models and external capabilities.
+
+Instead of teaching every model how to call every API, MCP standardizes the interaction.
+
+---
+
+# 7.2 Why was MCP created?
+
+Imagine building an AI assistant that needs access to:
+
+- Google Maps
+- Slack
+- GitHub
+- Salesforce
+- SAP
+- Jira
+- Outlook
+- Databases
+- File Systems
+
+Without MCP, every application developer must write custom integrations for every system.
+
+```
+LLM
+
+↓
+
+Custom Integration
+
+↓
+
+Google Maps
+```
+
+```
+LLM
+
+↓
+
+Different Integration
+
+↓
+
+Slack
+```
+
+```
+LLM
+
+↓
+
+Different Integration
+
+↓
+
+GitHub
+```
+
+Each integration:
+
+- Uses different authentication.
+- Uses different request formats.
+- Uses different response formats.
+- Uses different error handling.
+
+Maintenance quickly becomes expensive.
+
+---
+
+# 7.3 MCP Standardizes Everything
+
+Instead of
+
+```
+LLM
+
+↓
+
+API
+```
+
+the architecture becomes
+
+```
+LLM
+
+↓
+
+MCP
+
+↓
+
+Any Tool
+```
+
+The AI model only needs to understand **MCP**.
+
+Every external capability implements the MCP protocol.
+
+This dramatically simplifies tool integration.
+
+---
+
+# 7.4 MCP in This Project
+
+The Study Abroad Finder uses four MCP servers.
+
+```
+                 Gemini
+
+                    │
+
+                    ▼
+
+             Google ADK
+
+                    │
+
+      ┌─────────────┼─────────────┐
+
+      ▼             ▼             ▼
+
+ Tavily MCP    Scholarship MCP   Google Maps MCP
+
+                    │
+
+                    ▼
+
+            Filesystem MCP
+```
+
+Gemini never communicates directly with:
+
+- Google Maps
+- Tavily
+- Scholarship APIs
+- Filesystem
+
+Instead,
+
+Gemini communicates only with Google ADK.
+
+Google ADK communicates with MCP.
+
+MCP communicates with the actual service.
+
+---
+
+# 7.5 MCP Architecture
+
+A generic MCP architecture looks like this.
+
+```
+User
+
+↓
+
+LLM
+
+↓
+
+ADK
+
+↓
+
+MCP Client
+
+↓
+
+MCP Server
+
+↓
+
+External System
+```
+
+The MCP server becomes the translator between the AI model and the external service.
+
+---
+
+# 7.6 MCP Client vs MCP Server
+
+The protocol consists of two major components.
+
+## MCP Client
+
+The client lives inside the AI application.
+
+Responsibilities:
+
+- Discover tools
+- Open sessions
+- Invoke tools
+- Send parameters
+- Receive responses
+
+In this project,
+
+Google ADK acts as the MCP Client.
+
+---
+
+## MCP Server
+
+The server exposes tools.
+
+Responsibilities:
+
+- Register tools
+- Accept requests
+- Execute business logic
+- Return structured results
+
+Examples
+
+```
+Scholarship MCP
+
+↓
+
+get_scholarships()
+```
+
+```
+Google Maps MCP
+
+↓
+
+get_weather()
+```
+
+```
+Filesystem MCP
+
+↓
+
+write_file()
+```
+
+---
+
+# 7.7 Local MCP vs Remote MCP
+
+MCP servers can run in different environments.
+
+---
+
+## Local MCP
+
+Runs on the same machine as the application.
+
+Communication occurs through
+
+```
+STDIO
+```
+
+Example
+
+```
+Scholarship MCP
+```
+
+```
+Filesystem MCP
+```
+
+Architecture
+
+```
+ADK
+
+↓
+
+STDIO
+
+↓
+
+Python Process
+
+↓
+
+Scholarship Server
+```
+
+---
+
+## Remote MCP
+
+Runs on another machine.
+
+Communication occurs through
+
+```
+HTTP
+
+or
+
+Streamable HTTP
+```
+
+Examples
+
+```
+Google Maps MCP
+
+↓
+
+Remote
+```
+
+```
+Tavily MCP
+
+↓
+
+Remote
+```
+
+Architecture
+
+```
+ADK
+
+↓
+
+HTTP
+
+↓
+
+Remote MCP
+
+↓
+
+External Service
+```
+
+---
+
+# 7.8 Why Two Communication Methods?
+
+Different tools have different deployment models.
+
+Local tools
+
+Advantages
+
+- Faster
+- Private
+- No internet required
+- Easier debugging
+
+Remote tools
+
+Advantages
+
+- Centralized
+- Always updated
+- Shared across applications
+- Easier scaling
+
+The Study Abroad Finder intentionally demonstrates both models.
+
+---
+
+# 7.9 MCP Session Lifecycle
+
+Every tool invocation follows a lifecycle.
+
+```
+Gemini
+
+↓
+
+Select Tool
+
+↓
+
+ADK
+
+↓
+
+Create MCP Session
+
+↓
+
+Invoke Tool
+
+↓
+
+Receive Result
+
+↓
+
+Close Session
+```
+
+Each tool call is isolated.
+
+---
+
+# 7.10 Streamable HTTP
+
+Google Maps and Tavily use
+
+```
+StreamableHTTPConnectionParams
+```
+
+Example
+
+```python
+StreamableHTTPConnectionParams(
+    url="https://..."
+)
+```
+
+Advantages
+
+- Streaming responses
+- Better scalability
+- Lower latency
+- Standard HTTP infrastructure
+
+---
+
+# 7.11 STDIO Communication
+
+Local MCP servers communicate using
+
+```
+Standard Input
+
+↓
+
+Standard Output
+```
+
+Example
+
+```python
+StdioConnectionParams(
+    server_params=...
+)
+```
+
+The AI application launches the MCP server as a child process.
+
+Communication happens through pipes.
+
+This makes STDIO ideal for local tools.
+
+---
+
+# 7.12 MCP Tool Discovery
+
+When the application starts,
+
+Google ADK queries each MCP server.
+
+```
+ADK
+
+↓
+
+List Available Tools
+
+↓
+
+MCP Server
+
+↓
+
+Tool Metadata
+```
+
+Example
+
+```
+Scholarship MCP
+
+↓
+
+get_scholarships
+
+get_visa
+
+get_cost_of_living
+```
+
+Gemini now knows these tools exist.
+
+---
+
+# 7.13 Tool Invocation
+
+Suppose the user asks
+
+"I want AI universities in Germany."
+
+Gemini reasons
+
+```
+Need Scholarships
+
+↓
+
+Call Scholarship MCP
+```
+
+ADK invokes
+
+```
+get_scholarships()
+```
+
+Scholarship MCP executes
+
+↓
+
+Returns JSON
+
+↓
+
+Gemini continues reasoning
+
+The model never writes Python code.
+
+The model never calls APIs.
+
+The model simply requests tools.
+
+---
+
+# 7.14 MCP in Study Abroad Finder
+
+The final architecture became
+
+```
+                   Gemini
+
+                      │
+
+                      ▼
+
+                 Google ADK
+
+      ┌─────────────┼──────────────┐
+
+      ▼             ▼              ▼
+
+Tavily MCP   Google Maps MCP   Scholarship MCP
+
+                      │
+
+                      ▼
+
+              Filesystem MCP
+```
+
+Responsibilities
+
+Tavily
+
+↓
+
+University Search
+
+Google Maps
+
+↓
+
+Weather
+
+Nearby Attractions
+
+Scholarship
+
+↓
+
+Scholarships
+
+Visa
+
+Cost
+
+Filesystem
+
+↓
+
+Markdown Reports
+
+---
+
+# 7.15 Why Filesystem MCP Behaved Differently
+
+One of the biggest discoveries during this project was that not all MCP servers have identical runtime requirements.
+
+The Filesystem MCP is distributed as a Node.js package:
+
+```bash
+npx @modelcontextprotocol/server-filesystem
+```
+
+Unlike the Scholarship MCP (a Python process), the Filesystem MCP depends on:
+
+- Node.js
+- npm
+- npx
+
+This distinction became important during deployment.
+
+In the local development environment, these dependencies were available.
+
+However, the initial Render deployment used a Python runtime that did not fully support launching the Node-based MCP server.
+
+As a result:
+
+```
+ADK
+
+↓
+
+Create Filesystem MCP Session
+
+↓
+
+npx unavailable / runtime mismatch
+
+↓
+
+Session creation fails
+
+↓
+
+Tool unavailable
+
+↓
+
+Request stalls
+
+↓
+
+Worker timeout
+```
+
+This was the primary reason Docker became necessary.
+
+---
+
+# 7.16 MCP and Docker
+
+Docker solved the problem by providing a single runtime that included:
+
+- Python
+- Node.js
+- npm
+- npx
+
+Now every MCP server had the runtime it expected.
+
+```
+Docker Container
+
+│
+
+├── Python Runtime
+
+├── Node Runtime
+
+├── Scholarship MCP
+
+├── Filesystem MCP
+
+├── Flask
+
+└── Google ADK
+```
+
+This ensured consistent behavior between local development and cloud deployment.
+
+---
+
+# 7.17 Lessons Learned
+
+The project produced several important insights about MCP.
+
+### MCP is not an API.
+
+It is a communication protocol.
+
+---
+
+### MCP servers are independent applications.
+
+They can be written in different languages.
+
+---
+
+### One AI agent can communicate with many MCP servers simultaneously.
+
+---
+
+### Local and Remote MCP servers can coexist.
+
+---
+
+### Runtime dependencies matter.
+
+A Python MCP and a Node.js MCP may require different execution environments.
+
+---
+
+### Docker is an excellent way to standardize those environments.
+
+---
+
+# 7.18 Key Takeaways
+
+The Model Context Protocol is the foundation that enables AI agents to move beyond static language generation and interact with external systems in a structured, reusable, and scalable way.
+
+In the Study Abroad Finder project, MCP allowed Gemini to collaborate with multiple specialized services—web search, geographic information, scholarship data, and report generation—without needing to understand the implementation details of those services.
+
+This separation between reasoning (Gemini), orchestration (Google ADK), and execution (MCP servers) is the core architectural principle demonstrated throughout the project and forms the basis for building modular, enterprise-grade AI systems.

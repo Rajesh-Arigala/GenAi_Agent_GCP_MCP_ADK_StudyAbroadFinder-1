@@ -1,0 +1,490 @@
+# Section 3 — High-Level System Architecture
+
+---
+
+# 3.1 Introduction
+
+The Study Abroad Finder follows a layered architecture where each layer is responsible for a specific function.
+
+Unlike traditional applications where the backend directly calls external APIs, this project introduces an AI reasoning layer between the user interface and the execution layer.
+
+The language model (Gemini) does **not** directly know how to retrieve scholarships, weather, visa information, or generate reports.
+
+Instead, Gemini reasons about the user's request and delegates specialized tasks to MCP servers.
+
+This separation between **reasoning** and **execution** is the fundamental architectural principle behind Google ADK.
+
+---
+
+# 3.2 Complete System Architecture
+
+```
+                                    User
+                                      │
+                                      │
+                                      ▼
+                         Study Abroad Finder UI
+                          (HTML + CSS + Flask)
+                                      │
+                                      │
+                         HTTP Request (/ask)
+                                      │
+                                      ▼
+                                server.py
+                                      │
+                                      │
+                           run_query(question)
+                                      │
+                                      ▼
+                                agent.py
+                                      │
+                                      │
+                       Google ADK Session Service
+                                      │
+                                      ▼
+                            Google ADK Runner
+                                      │
+                                      ▼
+                           Gemini 2.5 Flash Model
+                                      │
+                 ┌────────────────────┼────────────────────┐
+                 │                    │                    │
+                 ▼                    ▼                    ▼
+          Tavily MCP          Scholarship MCP      Google Maps MCP
+                 │                    │                    │
+                 └──────────────┬─────┴────────────────────┘
+                                │
+                                ▼
+                         Filesystem MCP
+                                │
+                                ▼
+                      Markdown Report (.md)
+                                │
+                                ▼
+                        Final Response Returned
+                                │
+                                ▼
+                             Flask UI
+                                │
+                                ▼
+                              User
+```
+
+---
+
+# 3.3 Layered Architecture
+
+The application consists of seven logical layers.
+
+```
++------------------------------------------------+
+|                Presentation Layer              |
+|           HTML / CSS / Flask UI                |
++------------------------------------------------+
+
++------------------------------------------------+
+|               API Layer                        |
+|                Flask Routes                    |
++------------------------------------------------+
+
++------------------------------------------------+
+|              Agent Layer                       |
+|                Google ADK                      |
++------------------------------------------------+
+
++------------------------------------------------+
+|            Reasoning Layer                     |
+|             Gemini 2.5 Flash                   |
++------------------------------------------------+
+
++------------------------------------------------+
+|              Tool Layer                        |
+|              MCP Servers                       |
++------------------------------------------------+
+
++------------------------------------------------+
+|          External Services Layer               |
+|   Tavily | Google Maps | Scholarship Server    |
++------------------------------------------------+
+
++------------------------------------------------+
+|             Output Layer                       |
+| Markdown Report + Final Response               |
++------------------------------------------------+
+```
+
+Each layer has a single responsibility.
+
+This makes the system modular and easier to maintain.
+
+---
+
+# 3.4 Request Lifecycle
+
+The lifecycle of a user request can be understood as a sequence of reasoning and execution steps.
+
+Example request:
+
+> "I want to study Artificial Intelligence in Germany."
+
+The processing flow is:
+
+```
+User
+
+↓
+
+Flask receives request
+
+↓
+
+server.py
+
+↓
+
+agent.py
+
+↓
+
+Create ADK Session
+
+↓
+
+Create ADK Runner
+
+↓
+
+Gemini receives prompt
+
+↓
+
+Gemini analyses the request
+
+↓
+
+Gemini decides which MCP tools are required
+
+↓
+
+Invoke MCP server(s)
+
+↓
+
+Collect tool outputs
+
+↓
+
+Generate final response
+
+↓
+
+Return response to Flask
+
+↓
+
+Display response to user
+```
+
+The language model never performs the external work itself.
+
+Instead, it orchestrates the available tools.
+
+---
+
+# 3.5 Responsibilities of Each Component
+
+## User Interface
+
+Responsible for:
+
+- Accepting user input
+- Displaying AI responses
+- Showing application status
+
+The UI contains no business logic.
+
+---
+
+## Flask Backend
+
+Responsible for:
+
+- HTTP routing
+- Request validation
+- Invoking the AI agent
+- Returning JSON responses
+
+Flask is intentionally lightweight.
+
+---
+
+## agent.py
+
+Responsible for:
+
+- Loading environment variables
+- Initializing Gemini
+- Creating MCP toolsets
+- Managing ADK sessions
+- Running the AI workflow
+
+This file represents the intelligence layer of the application.
+
+---
+
+## Google ADK
+
+Responsible for:
+
+- Managing conversations
+- Managing tool execution
+- Managing sessions
+- Coordinating Gemini with MCP servers
+
+ADK acts as the orchestration engine.
+
+---
+
+## Gemini Model
+
+Responsible for:
+
+- Understanding user intent
+- Planning execution
+- Selecting tools
+- Combining tool outputs
+- Producing the final response
+
+Gemini performs reasoning only.
+
+---
+
+## MCP Servers
+
+Responsible for:
+
+- Executing specialized tasks
+
+Examples:
+
+Tavily
+
+↓
+
+University Search
+
+Scholarship
+
+↓
+
+Scholarships
+
+Visa
+
+Cost of Living
+
+Google Maps
+
+↓
+
+Weather
+
+Nearby Attractions
+
+Filesystem
+
+↓
+
+Markdown Report
+
+Each MCP server performs one specialized function.
+
+---
+
+# 3.6 Reasoning vs Execution
+
+One of the most important architectural concepts demonstrated by this project is the distinction between reasoning and execution.
+
+Reasoning is performed by Gemini.
+
+Execution is performed by MCP servers.
+
+```
+Gemini
+
+↓
+
+"I need university rankings."
+
+↓
+
+Calls Tavily MCP
+
+↓
+
+Returns rankings
+
+↓
+
+"I now need scholarships."
+
+↓
+
+Calls Scholarship MCP
+
+↓
+
+Returns scholarships
+
+↓
+
+"I need weather."
+
+↓
+
+Calls Google Maps MCP
+
+↓
+
+Returns weather
+
+↓
+
+"I should save the report."
+
+↓
+
+Calls Filesystem MCP
+
+↓
+
+Returns success
+
+↓
+
+Gemini writes the final response
+```
+
+The language model does not know university rankings or weather by itself.
+
+It knows **which tool to ask**.
+
+---
+
+# 3.7 Why This Architecture?
+
+This architecture offers several advantages.
+
+### Separation of Concerns
+
+Reasoning is separated from execution.
+
+---
+
+### Scalability
+
+New MCP servers can be added without redesigning the application.
+
+---
+
+### Maintainability
+
+Each MCP server evolves independently.
+
+---
+
+### Reusability
+
+The same MCP server can be reused by multiple AI agents.
+
+---
+
+### Extensibility
+
+Future MCP servers may include:
+
+- Flights
+- Hotels
+- Currency Exchange
+- Insurance
+- Student Housing
+- Job Market
+- Immigration Services
+
+No modification to Gemini is required.
+
+Only the MCP server is added.
+
+---
+
+# 3.8 Architecture Evolution
+
+The project evolved through multiple stages.
+
+```
+Stage 1
+
+Gemini Only
+
+↓
+
+Stage 2
+
+Gemini + Scholarship MCP
+
+↓
+
+Stage 3
+
+Gemini + Filesystem MCP
+
+↓
+
+Stage 4
+
+Gemini + Tavily MCP
+
+↓
+
+Stage 5
+
+Gemini + Google Maps MCP
+
+↓
+
+Stage 6
+
+Gemini + All MCP Servers
+
+↓
+
+Stage 7
+
+Docker Deployment
+
+↓
+
+Stage 8
+
+Render Production Deployment
+```
+
+Each stage validated one architectural component before integrating the complete solution.
+
+This incremental testing strategy significantly simplified debugging and helped isolate environment-specific issues.
+
+---
+
+# 3.9 Final Architecture Summary
+
+The final system demonstrates a modern AI architecture in which:
+
+- Flask manages web requests.
+- Google ADK manages orchestration.
+- Gemini performs reasoning.
+- MCP servers perform execution.
+- Docker guarantees environment consistency.
+- Render hosts the application.
+- Specialized tools collaborate to solve complex user requests.
+
+The resulting application is modular, extensible, and representative of the architectural patterns used in enterprise-grade AI systems that rely on tool augmentation rather than model-only intelligence.

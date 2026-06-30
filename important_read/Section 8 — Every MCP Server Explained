@@ -1,0 +1,864 @@
+Section 8 — Every MCP Server Explained
+
+8.1 Introduction
+
+8.2 Tavily MCP
+    Purpose
+    Architecture
+    Communication
+    Request Flow
+    Response Flow
+    Why Tavily?
+    Limitations
+
+8.3 Google Maps MCP
+    Purpose
+    Architecture
+    Weather
+    Nearby Places
+    Geocoding
+    Why Remote MCP?
+    Authentication
+    Debugging
+    Production Notes
+
+8.4 Scholarship MCP
+    Purpose
+    Local MCP
+    STDIO
+    Why Python?
+    Tools
+    Request Flow
+    Response Flow
+    Advantages
+
+8.5 Filesystem MCP
+    Purpose
+    Why Report Generation?
+    Why Node?
+    STDIO
+    Runtime
+    Docker Impact
+    Before Docker
+    After Docker
+    Production Storage
+
+8.6 Comparison Table
+
+8.7 Lessons Learned
+
+8.8 Final Architecture
+
+===================================
+
+# Section 8 — Every MCP Server Explained
+
+---
+
+# 8.1 Introduction
+
+The Study Abroad Finder is built around four independent MCP servers.
+
+Each server specializes in a particular domain and exposes one or more tools through the Model Context Protocol (MCP).
+
+Rather than building one monolithic service responsible for every task, the application follows a modular architecture in which each MCP server performs one specific responsibility.
+
+This approach offers several advantages:
+
+- Separation of concerns
+- Easier maintenance
+- Independent testing
+- Easier scalability
+- Better reusability
+- Simplified debugging
+
+The four MCP servers used in this project are:
+
+1. Tavily MCP
+2. Google Maps MCP
+3. Scholarship MCP
+4. Filesystem MCP
+
+Together they provide the capabilities required for the Study Abroad Finder.
+
+---
+
+# 8.2 Overall MCP Architecture
+
+```
+                               Gemini
+
+                                  │
+
+                                  ▼
+
+                            Google ADK
+
+        ┌─────────────────────────┼──────────────────────────┐
+
+        ▼                         ▼                          ▼
+
+   Tavily MCP              Google Maps MCP          Scholarship MCP
+
+                                                          │
+
+                                                          ▼
+
+                                                   Filesystem MCP
+```
+
+Each MCP server is responsible for one domain.
+
+Gemini never communicates with external APIs directly.
+
+Instead,
+
+Gemini
+
+↓
+
+Google ADK
+
+↓
+
+MCP Server
+
+↓
+
+External System
+
+↓
+
+Response
+
+---
+
+# 8.3 Tavily MCP
+
+---
+
+## Purpose
+
+The Tavily MCP server provides access to live web search.
+
+Unlike Gemini's internal knowledge, Tavily retrieves current information from the internet.
+
+Examples include:
+
+- University Rankings
+- Official Websites
+- Latest Course Information
+- Recent University Updates
+- Tuition Information
+
+---
+
+## Why Tavily?
+
+A language model has a knowledge cutoff.
+
+University rankings and admissions change every year.
+
+Therefore,
+
+real-time web search is required.
+
+Tavily fills this gap.
+
+---
+
+## Communication Type
+
+```
+Remote MCP
+
+↓
+
+Streamable HTTP
+```
+
+Connection
+
+```python
+StreamableHTTPConnectionParams(
+    url=f"https://mcp.tavily.com/mcp/?tavilyApiKey={TAVILY_API_KEY}"
+)
+```
+
+---
+
+## Responsibilities
+
+Tavily answers questions such as
+
+```
+Top AI universities in Germany
+
+Best ML universities in USA
+
+Top Computer Science universities
+
+Official university websites
+
+Recent ranking information
+```
+
+---
+
+## Internal Request Flow
+
+```
+Gemini
+
+↓
+
+Google ADK
+
+↓
+
+Tavily MCP
+
+↓
+
+Tavily Search API
+
+↓
+
+Search Results
+
+↓
+
+Gemini
+```
+
+---
+
+## Advantages
+
+✓ Live data
+
+✓ Search grounding
+
+✓ Current rankings
+
+✓ Reliable sources
+
+✓ Easy integration
+
+---
+
+## Limitations
+
+Cannot provide
+
+- Weather
+
+- Scholarships
+
+- Visa Information
+
+- Report Generation
+
+---
+
+# 8.4 Google Maps MCP
+
+---
+
+## Purpose
+
+Provides geographic intelligence.
+
+Capabilities include
+
+- Current Weather
+
+- Nearby Attractions
+
+- Geocoding
+
+- Place Information
+
+- Directions
+
+- Distance
+
+---
+
+## Why Maps?
+
+A university recommendation is more useful when students understand the surrounding environment.
+
+Examples
+
+"What is the weather in Munich?"
+
+"What attractions are near TUM?"
+
+"How far is the airport?"
+
+---
+
+## Communication
+
+```
+Remote MCP
+
+↓
+
+Streamable HTTP
+```
+
+Configuration
+
+```python
+StreamableHTTPConnectionParams(
+    url="https://mapstools.googleapis.com/mcp"
+)
+```
+
+---
+
+## Authentication
+
+Requires
+
+```
+GOOGLE_MAPS_API_KEY
+```
+
+Unlike Tavily,
+
+Maps requires API authentication.
+
+---
+
+## Responsibilities
+
+Maps provides
+
+Current Weather
+
+↓
+
+Nearby Attractions
+
+↓
+
+Location Information
+
+↓
+
+Campus Context
+
+---
+
+## Internal Flow
+
+```
+Gemini
+
+↓
+
+Google ADK
+
+↓
+
+Maps MCP
+
+↓
+
+Google Maps Service
+
+↓
+
+Results
+
+↓
+
+Gemini
+```
+
+---
+
+## Advantages
+
+✓ Real-time
+
+✓ Accurate
+
+✓ Rich geographical context
+
+✓ Official Google Maps ecosystem
+
+---
+
+## Limitations
+
+Cannot answer
+
+- Scholarships
+
+- University Rankings
+
+- Visa Requirements
+
+---
+
+## Debugging Experience
+
+During deployment,
+
+Maps MCP initially failed because
+
+Google Cloud authentication differs between
+
+API Keys
+
+and
+
+Application Default Credentials (ADC).
+
+Understanding this distinction was one of the major learnings from the project.
+
+---
+
+# 8.5 Scholarship MCP
+
+---
+
+## Purpose
+
+The Scholarship MCP is a custom-built Local MCP server.
+
+Unlike the other MCP servers,
+
+this server was developed specifically for the Study Abroad Finder.
+
+---
+
+## Why build a custom MCP?
+
+Scholarships
+
+Visa
+
+Cost of Living
+
+were project-specific requirements.
+
+Instead of relying on another cloud service,
+
+a local MCP server was implemented.
+
+---
+
+## Communication
+
+```
+Local MCP
+
+↓
+
+STDIO
+```
+
+Configuration
+
+```python
+StdioConnectionParams(
+    server_params=...
+)
+```
+
+---
+
+## Responsibilities
+
+The Scholarship MCP provides
+
+Scholarships
+
+↓
+
+Visa Information
+
+↓
+
+Cost of Living
+
+↓
+
+Monthly Expenses
+
+↓
+
+Living Estimates
+
+---
+
+## Internal Flow
+
+```
+Gemini
+
+↓
+
+Google ADK
+
+↓
+
+STDIO
+
+↓
+
+Scholarship MCP
+
+↓
+
+Python Process
+
+↓
+
+Results
+
+↓
+
+Gemini
+```
+
+---
+
+## Advantages
+
+✓ Fully customizable
+
+✓ Offline capable
+
+✓ Runs locally
+
+✓ Easy debugging
+
+✓ Fast execution
+
+---
+
+## Limitations
+
+Requires the local Python runtime.
+
+If Python is unavailable,
+
+the MCP server cannot start.
+
+---
+
+# 8.6 Filesystem MCP
+
+---
+
+## Purpose
+
+The Filesystem MCP generates Markdown reports.
+
+Example
+
+```
+AI_Germany_Report.md
+
+Machine_Learning_USA.md
+
+Technical_University_of_Munich.md
+```
+
+---
+
+## Why Filesystem MCP?
+
+Instead of returning only chat responses,
+
+the project generates structured reports.
+
+This demonstrates that AI agents can produce persistent artifacts rather than only conversational output.
+
+---
+
+## Communication
+
+```
+Local MCP
+
+↓
+
+STDIO
+```
+
+Execution
+
+```bash
+npx @modelcontextprotocol/server-filesystem
+```
+
+---
+
+## Responsibilities
+
+Create Files
+
+↓
+
+Write Markdown
+
+↓
+
+Save Reports
+
+↓
+
+Return Success
+
+---
+
+## Internal Flow
+
+```
+Gemini
+
+↓
+
+Google ADK
+
+↓
+
+Filesystem MCP
+
+↓
+
+Node Process
+
+↓
+
+Markdown File
+
+↓
+
+Success
+
+↓
+
+Gemini
+```
+
+---
+
+## Runtime Requirements
+
+Unlike the Scholarship MCP,
+
+Filesystem MCP is implemented as a Node.js package.
+
+Therefore it requires
+
+```
+Node.js
+
+npm
+
+npx
+```
+
+This dependency became the most significant deployment challenge in the project.
+
+---
+
+## Before Docker
+
+Local
+
+```
+Node Installed
+
+↓
+
+Filesystem MCP
+
+↓
+
+Success
+```
+
+Render Python Runtime
+
+```
+Node Missing
+
+↓
+
+Filesystem MCP
+
+↓
+
+Session Failure
+
+↓
+
+Worker Timeout
+```
+
+---
+
+## After Docker
+
+Docker Image
+
+```
+Python
+
++
+
+Node
+
++
+
+npm
+
++
+
+npx
+```
+
+↓
+
+Filesystem MCP
+
+↓
+
+Success
+
+↓
+
+Markdown Generated
+
+Docker standardized the execution environment and resolved the runtime dependency issue.
+
+---
+
+## Report Storage
+
+Local
+
+```
+project_root/reports/
+```
+
+Docker
+
+```
+/app/reports/
+```
+
+Important
+
+Render containers are ephemeral.
+
+The reports exist only while the container is running.
+
+Future versions should store reports in:
+
+- Amazon S3
+- Google Cloud Storage
+- Azure Blob Storage
+- Render Persistent Disk
+
+---
+
+# 8.7 MCP Comparison
+
+| Feature | Tavily MCP | Google Maps MCP | Scholarship MCP | Filesystem MCP |
+|----------|------------|-----------------|-----------------|----------------|
+| Type | Remote | Remote | Local | Local |
+| Protocol | Streamable HTTP | Streamable HTTP | STDIO | STDIO |
+| Runtime | Cloud | Cloud | Python | Node.js |
+| Authentication | API Key | API Key | None | None |
+| Purpose | Web Search | Maps & Weather | Scholarships | Report Generation |
+| Internet Required | Yes | Yes | No | No |
+| Custom Built | No | No | Yes | No |
+
+---
+
+# 8.8 Lessons Learned
+
+The project demonstrated several important architectural principles.
+
+### Different MCP servers can coexist.
+
+A single AI agent successfully interacted with both Remote and Local MCP servers.
+
+---
+
+### Runtime dependencies matter.
+
+Python-based MCP servers and Node.js-based MCP servers have different execution requirements.
+
+Deployment environments must satisfy all required runtimes.
+
+---
+
+### MCP servers should have focused responsibilities.
+
+Each server in this project performed one specialized task.
+
+This modularity simplified testing, debugging, and future extensibility.
+
+---
+
+### Docker standardizes heterogeneous runtimes.
+
+The Filesystem MCP issue highlighted the importance of containerization when combining tools built with different technologies.
+
+---
+
+# 8.9 Final Architecture
+
+The final MCP architecture for the Study Abroad Finder is shown below.
+
+```
+                           Gemini 2.5 Flash
+
+                                   │
+
+                                   ▼
+
+                             Google ADK
+
+        ┌──────────────────────────┼──────────────────────────┐
+
+        ▼                          ▼                          ▼
+
+   Tavily MCP               Google Maps MCP          Scholarship MCP
+
+                                                          │
+
+                                                          ▼
+
+                                                   Filesystem MCP
+
+                                                          │
+
+                                                          ▼
+
+                                                Markdown Report
+
+                                                          │
+
+                                                          ▼
+
+                                                  Final Response
+```
+
+Each MCP server contributes a specialized capability, while Google ADK orchestrates their interaction and Gemini provides the reasoning that determines **which tools to use, when to use them, and how to combine their outputs**.
+
+This modular architecture demonstrates how modern AI systems can move beyond standalone language models by integrating specialized execution services through a common protocol.
+
+=====================
+

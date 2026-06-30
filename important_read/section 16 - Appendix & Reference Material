@@ -1,0 +1,603 @@
+# Section 16 — Appendix & Reference Material
+
+---
+
+# 16.1 Introduction
+
+This appendix consolidates the operational details, configuration files, commands, deployment settings, and troubleshooting information required to reproduce, deploy, operate, and extend the Study Abroad Finder application.
+
+Unlike the previous sections, which focused on architecture and engineering concepts, this appendix serves as a practical reference for developers.
+
+---
+
+# 16.2 Project Directory Structure
+
+```
+studyabroad_finder-MCP-ADK/
+
+│
+
+├── app/
+│   ├── server.py
+│   ├── agent.py
+│   ├── templates/
+│   │      index.html
+│   └── static/
+
+│
+├── scholarship_mcp_server/
+│      scholarship_server.py
+
+│
+├── reports/
+
+│
+├── requirements.txt
+
+├── Dockerfile
+
+├── .dockerignore
+
+├── .gitignore
+
+├── render.yaml (optional)
+
+├── README.md
+
+└── .env
+```
+
+---
+
+# 16.3 Environment Variables
+
+Required
+
+```
+GOOGLE_API_KEY=
+
+GOOGLE_MAPS_API_KEY=
+
+TAVILY_API_KEY=
+```
+
+These variables must be configured both locally and in Render.
+
+Never commit `.env` files to version control.
+
+---
+
+# 16.4 Python Dependencies
+
+Installed through
+
+```
+requirements.txt
+```
+
+Major libraries include
+
+- Flask
+- Google ADK
+- google-genai
+- python-dotenv
+- MCP
+- Gunicorn
+
+Install
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+# 16.5 Node.js Dependencies
+
+Filesystem MCP requires
+
+```
+Node.js
+
+npm
+
+npx
+```
+
+Verify
+
+```bash
+node -v
+
+npm -v
+
+npx -v
+```
+
+---
+
+# 16.6 Local Execution
+
+Activate environment
+
+```bash
+conda activate <environment_name>
+```
+
+Run application
+
+```bash
+python app/server.py
+```
+
+or
+
+```bash
+flask run
+```
+
+depending on configuration.
+
+---
+
+# 16.7 Docker Commands
+
+Build image
+
+```bash
+docker build -t studyabroad-finder .
+```
+
+Run container
+
+```bash
+docker run -p 5000:5000 studyabroad-finder
+```
+
+View logs
+
+```bash
+docker logs <container_id>
+```
+
+Open shell
+
+```bash
+docker exec -it <container_id> bash
+```
+
+---
+
+# 16.8 Git Workflow
+
+Check status
+
+```bash
+git status
+```
+
+Stage changes
+
+```bash
+git add .
+```
+
+Commit
+
+```bash
+git commit -m "Meaningful message"
+```
+
+Push
+
+```bash
+git push origin main
+```
+
+Update local repository
+
+```bash
+git pull --rebase origin main
+```
+
+---
+
+# 16.9 Render Deployment
+
+Typical deployment process
+
+```
+Modify Code
+
+↓
+
+Commit
+
+↓
+
+Push GitHub
+
+↓
+
+Render Auto Deploy
+
+↓
+
+Validate
+
+↓
+
+Test
+```
+
+Build Command
+
+```
+pip install -r requirements.txt
+```
+
+Docker Deployment
+
+```
+Dockerfile
+```
+
+Start Command
+
+```
+gunicorn --timeout 120 app.server:app
+```
+
+---
+
+# 16.10 Dockerfile Summary
+
+Responsibilities
+
+- Install Python
+- Install Node.js
+- Install npm
+- Install npx
+- Install Python dependencies
+- Copy project files
+- Create reports directory
+- Launch Gunicorn
+
+---
+
+# 16.11 Common Test Prompts
+
+Example 1
+
+```
+Top AI universities in Germany.
+```
+
+---
+
+Example 2
+
+```
+Top Machine Learning universities in USA.
+```
+
+---
+
+Example 3
+
+```
+Suggest Computer Science universities in Canada.
+```
+
+---
+
+Example 4
+
+```
+Find universities for Data Science in the UK and generate a report.
+```
+
+---
+
+Example 5
+
+```
+Recommend AI universities in Germany with scholarships, visa requirements, weather, nearby attractions, and generate a markdown report.
+```
+
+---
+
+# 16.12 Local Verification Checklist
+
+Before deployment
+
+Verify
+
+✓ Flask starts
+
+✓ Gemini responds
+
+✓ Scholarship MCP works
+
+✓ Filesystem MCP generates reports
+
+✓ Tavily MCP returns search results
+
+✓ Google Maps MCP returns weather
+
+✓ Reports directory created
+
+---
+
+# 16.13 Deployment Verification Checklist
+
+After deployment
+
+Verify
+
+✓ Website loads
+
+✓ Environment variables configured
+
+✓ Gemini responds
+
+✓ MCP sessions initialize
+
+✓ Reports generated
+
+✓ No worker timeout
+
+✓ No MCP session failures
+
+---
+
+# 16.14 Common Errors
+
+### Deprecated Gemini Model
+
+```
+404
+
+Model not found
+```
+
+Solution
+
+```
+gemini-2.5-flash
+```
+
+---
+
+### Worker Timeout
+
+```
+WORKER TIMEOUT
+```
+
+Possible causes
+
+- MCP session failure
+- Runtime dependency
+- Long-running tool
+
+---
+
+### Failed MCP Session
+
+```
+Failed to create MCP session
+```
+
+Possible causes
+
+- Missing runtime
+- Invalid API key
+- MCP server unavailable
+
+---
+
+### Google Maps Authentication
+
+Symptoms
+
+```
+ADC
+
+Authentication
+```
+
+Verify
+
+```
+GOOGLE_MAPS_API_KEY
+```
+
+---
+
+### Filesystem MCP Failure
+
+Symptoms
+
+```
+Timeout
+
+Session Failure
+```
+
+Verify
+
+```
+Node
+
+npm
+
+npx
+```
+
+---
+
+# 16.15 Reports Location
+
+Local
+
+```
+project_root/reports/
+```
+
+Docker
+
+```
+/app/reports/
+```
+
+Current deployment stores reports inside the running container.
+
+Future versions should use persistent cloud storage.
+
+---
+
+# 16.16 Useful Commands
+
+Verify Python
+
+```bash
+python --version
+```
+
+Verify Pip
+
+```bash
+pip --version
+```
+
+Verify Node
+
+```bash
+node -v
+```
+
+Verify npm
+
+```bash
+npm -v
+```
+
+Verify npx
+
+```bash
+npx -v
+```
+
+Verify Git
+
+```bash
+git status
+```
+
+---
+
+# 16.17 Troubleshooting Workflow
+
+Recommended debugging sequence
+
+```
+Application Starts?
+
+↓
+
+Gemini Works?
+
+↓
+
+Scholarship MCP?
+
+↓
+
+Filesystem MCP?
+
+↓
+
+Tavily MCP?
+
+↓
+
+Maps MCP?
+
+↓
+
+Combined Agent?
+
+↓
+
+Docker?
+
+↓
+
+Render?
+```
+
+Never debug all components simultaneously.
+
+---
+
+# 16.18 Technologies Used
+
+| Layer | Technology |
+|---------|------------|
+| Frontend | HTML, CSS, JavaScript |
+| Backend | Flask |
+| AI Framework | Google ADK |
+| LLM | Gemini 2.5 Flash |
+| Protocol | MCP |
+| Local MCP | Scholarship MCP |
+| Local MCP | Filesystem MCP |
+| Remote MCP | Tavily MCP |
+| Remote MCP | Google Maps MCP |
+| Container | Docker |
+| Cloud | Render |
+| Version Control | Git & GitHub |
+
+---
+
+# 16.19 References
+
+Official documentation
+
+Google ADK
+
+Model Context Protocol (MCP)
+
+Google Gemini API
+
+Google Maps Platform
+
+Tavily MCP
+
+Docker
+
+Render
+
+Flask
+
+Gunicorn
+
+---
+
+# 16.20 Final Summary
+
+The Study Abroad Finder demonstrates a complete AI application built around modern AI engineering principles.
+
+The project integrates:
+
+- Google Gemini 2.5 Flash for reasoning
+- Google ADK for orchestration
+- Multiple MCP servers for specialized execution
+- Docker for runtime standardization
+- Render for cloud deployment
+
+Throughout the project, every architectural layer was designed to remain modular and replaceable.
+
+The resulting system serves not only as a functional application but also as a reusable reference architecture for future AI systems built on tool orchestration, standardized protocols, and cloud-native deployment.
+
+This document captures the complete lifecycle of the project—from architecture and implementation to debugging, deployment, validation, production readiness, and future evolution—providing a comprehensive reference for developers, engineers, and future maintainers.

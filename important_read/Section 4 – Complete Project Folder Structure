@@ -1,0 +1,583 @@
+# Section 4 — Complete Project Folder Structure
+
+---
+
+# 4.1 Introduction
+
+Understanding the project folder structure is essential before diving into the implementation.
+
+The Study Abroad Finder project was intentionally organized to separate:
+
+- Presentation Layer
+- Backend Layer
+- AI Layer
+- MCP Servers
+- Reports
+- Deployment
+- Configuration
+
+Each folder has a single responsibility.
+
+This modular organization makes the application easier to understand, maintain, debug, and extend.
+
+---
+
+# 4.2 Complete Folder Structure
+
+```
+studyabroad_finder-MCP-ADK/
+
+│
+├── app/
+│   │
+│   ├── __init__.py
+│   ├── server.py
+│   ├── agent.py
+│   │
+│   └── templates/
+│        └── index.html
+│
+├── scholarship_mcp_server/
+│   └── scholarship_server.py
+│
+├── reports/
+│
+├── notebooks/
+│
+├── requirements.txt
+│
+├── Dockerfile
+│
+├── .env
+│
+├── .gitignore
+│
+└── README.md
+```
+
+---
+
+# 4.3 Project Root
+
+The root folder contains the complete application.
+
+It is responsible for:
+
+- Project configuration
+- Docker deployment
+- Dependency management
+- Git configuration
+- Environment variables
+
+Everything else is organized into subfolders.
+
+---
+
+# 4.4 app/
+
+This is the heart of the application.
+
+```
+app/
+
+server.py
+
+agent.py
+
+templates/
+```
+
+Responsibilities
+
+- Flask application
+- Google ADK
+- Gemini
+- MCP orchestration
+
+---
+
+# 4.5 server.py
+
+server.py is the Flask application.
+
+It is the entry point for all user interactions.
+
+Responsibilities
+
+- Starts Flask
+
+- Serves HTML page
+
+- Receives user questions
+
+- Calls
+
+```
+run_query(question)
+```
+
+inside
+
+```
+agent.py
+```
+
+Returns
+
+```
+JSON Response
+```
+
+Example Flow
+
+```
+Browser
+
+↓
+
+POST /ask
+
+↓
+
+server.py
+
+↓
+
+run_query()
+
+↓
+
+agent.py
+```
+
+---
+
+# 4.6 agent.py
+
+This is the intelligence layer.
+
+Everything related to AI exists here.
+
+Responsibilities
+
+- Load environment variables
+
+- Create MCP Toolsets
+
+- Configure Gemini
+
+- Create ADK Runner
+
+- Create Session
+
+- Execute reasoning
+
+- Receive tool outputs
+
+- Return final response
+
+It is the most important file in the project.
+
+---
+
+# 4.7 templates/
+
+Contains
+
+```
+index.html
+```
+
+Purpose
+
+- User Interface
+
+- Textbox
+
+- Buttons
+
+- Response Window
+
+No AI logic exists here.
+
+It is purely presentation.
+
+---
+
+# 4.8 scholarship_mcp_server/
+
+Contains
+
+```
+scholarship_server.py
+```
+
+Purpose
+
+Acts as a Local MCP Server.
+
+Provides
+
+- Scholarships
+
+- Visa
+
+- Cost of Living
+
+Unlike Google Maps and Tavily,
+
+this MCP server is owned by the application.
+
+It communicates through
+
+STDIO.
+
+---
+
+# 4.9 reports/
+
+```
+reports/
+```
+
+Purpose
+
+Stores generated Markdown reports.
+
+Examples
+
+```
+AI_Germany_Report.md
+
+Machine_Learning_USA.md
+
+Technical_University_of_Munich.md
+```
+
+Local Development
+
+```
+reports/
+```
+
+exists inside the project folder.
+
+Docker Deployment
+
+Reports are stored inside
+
+```
+/app/reports
+```
+
+inside the container.
+
+Important
+
+Render containers are ephemeral.
+
+Reports survive only until the container is restarted.
+
+Future versions should store reports in
+
+- Amazon S3
+
+or
+
+- Google Cloud Storage
+
+or
+
+- Azure Blob Storage
+
+or
+
+Render Persistent Disk
+
+---
+
+# 4.10 notebooks/
+
+Purpose
+
+Development experiments.
+
+Examples
+
+- Prompt testing
+
+- MCP experiments
+
+- Gemini testing
+
+This folder is not required for production.
+
+---
+
+# 4.11 requirements.txt
+
+Purpose
+
+Installs every Python dependency.
+
+Examples
+
+```
+google-adk
+
+google-genai
+
+flask
+
+python-dotenv
+
+gunicorn
+
+mcp
+```
+
+Without this file
+
+the application cannot run.
+
+---
+
+# 4.12 Dockerfile
+
+Purpose
+
+Defines the execution environment.
+
+Responsibilities
+
+Install
+
+Python
+
+↓
+
+Install
+
+Node
+
+↓
+
+Install
+
+npm
+
+↓
+
+Install
+
+npx
+
+↓
+
+Install Python Packages
+
+↓
+
+Copy Project
+
+↓
+
+Start Gunicorn
+
+This file became critical after discovering that
+
+Filesystem MCP requires Node.
+
+---
+
+# 4.13 .env
+
+Purpose
+
+Contains all secrets.
+
+Examples
+
+```
+GOOGLE_API_KEY
+
+GOOGLE_MAPS_API_KEY
+
+TAVILY_API_KEY
+```
+
+The
+
+```
+.env
+```
+
+file is
+
+NEVER committed to Git.
+
+GitHub Push Protection prevented accidental commits of secrets during development, reinforcing secure credential management.
+
+---
+
+# 4.14 .gitignore
+
+Purpose
+
+Prevent unwanted files entering Git.
+
+Examples
+
+```
+.env
+
+__pycache__/
+
+reports/
+
+*.pyc
+```
+
+Without
+
+```
+.gitignore
+```
+
+Python cache
+
+Secrets
+
+Generated Reports
+
+would be committed accidentally.
+
+---
+
+# 4.15 README.md
+
+Purpose
+
+Project Documentation.
+
+Typically contains
+
+Installation
+
+Running locally
+
+Deployment
+
+Architecture
+
+Usage
+
+Future Work
+
+---
+
+# 4.16 Relationship Between Files
+
+```
+                index.html
+                     │
+                     ▼
+                server.py
+                     │
+                     ▼
+                agent.py
+                     │
+         ┌───────────┼────────────┐
+         │           │            │
+         ▼           ▼            ▼
+
+   Tavily MCP   Maps MCP   Scholarship MCP
+
+                     │
+                     ▼
+
+             Filesystem MCP
+
+                     │
+                     ▼
+
+               reports/
+```
+
+This represents the logical flow of the application.
+
+---
+
+# 4.17 Local vs Docker Folder Structure
+
+Local
+
+```
+studyabroad_finder-MCP-ADK/
+
+reports/
+
+AI_Report.md
+```
+
+Docker
+
+```
+/app/
+
+reports/
+
+AI_Report.md
+```
+
+The logical structure remains identical.
+
+Only the absolute paths change.
+
+---
+
+# 4.18 Why This Folder Structure?
+
+The organization follows software engineering best practices.
+
+Benefits
+
+✓ Clear separation of concerns
+
+✓ Easier debugging
+
+✓ Easier deployment
+
+✓ Independent MCP servers
+
+✓ Better maintainability
+
+✓ Simpler onboarding
+
+A new developer can immediately identify where
+
+- UI lives
+
+- AI logic lives
+
+- MCP servers live
+
+- Reports are generated
+
+- Deployment is configured
+
+without reading any code.
+
+---
+
+# 4.19 Key Takeaways
+
+The Study Abroad Finder is intentionally organized into modular components.
+
+Each file has a clearly defined responsibility.
+
+This modularity made it possible to debug each MCP server independently, validate local and cloud deployments separately, and ultimately isolate the Filesystem MCP runtime issue that was resolved through Docker.
+
+The folder structure therefore reflects not only the implementation, but also the architectural philosophy of the project:
+
+> Keep reasoning, execution, presentation, deployment, and configuration independent wherever possible.

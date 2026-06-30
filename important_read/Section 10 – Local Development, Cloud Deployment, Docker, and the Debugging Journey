@@ -1,0 +1,632 @@
+# Section 10 — Development Journey, Deployment Architecture & Docker
+
+---
+
+# 10.1 Introduction
+
+Building an AI application involves far more than writing prompts or connecting a language model.
+
+A production-ready AI system must execute consistently across different environments while coordinating multiple external services, runtimes, and dependencies.
+
+The Study Abroad Finder project evolved through several implementation stages.
+
+Each stage validated one architectural component before progressing to the next.
+
+This incremental approach proved invaluable because it isolated failures and allowed every subsystem to be verified independently.
+
+Rather than attempting to deploy the complete application immediately, the project followed a structured engineering methodology:
+
+1. Build locally.
+2. Verify functionality.
+3. Deploy incrementally.
+4. Isolate failures.
+5. Resolve environment-specific issues.
+6. Standardize the runtime.
+7. Redeploy.
+8. Validate again.
+
+---
+
+# 10.2 Development Philosophy
+
+The project followed a simple engineering rule:
+
+> Never debug five unknowns simultaneously.
+
+Instead,
+
+every component was validated individually before combining them.
+
+The testing strategy was therefore:
+
+```
+Gemini
+
+↓
+
+Scholarship MCP
+
+↓
+
+Filesystem MCP
+
+↓
+
+Tavily MCP
+
+↓
+
+Google Maps MCP
+
+↓
+
+Combined Agent
+
+↓
+
+Docker
+
+↓
+
+Render
+```
+
+Each successful stage became the baseline for the next.
+
+---
+
+# 10.3 Initial Local Architecture
+
+The initial local architecture was extremely simple.
+
+```
+MacBook
+
+↓
+
+Flask
+
+↓
+
+Google ADK
+
+↓
+
+Gemini
+
+↓
+
+Scholarship MCP
+
+↓
+
+Filesystem MCP
+
+↓
+
+Reports Folder
+```
+
+Everything executed on a single machine.
+
+The application worked because:
+
+- Python runtime existed.
+- Node.js existed.
+- npm existed.
+- npx existed.
+- Environment variables were available.
+
+Local development therefore became the reference environment.
+
+---
+
+# 10.4 Local Development Workflow
+
+The development workflow followed the sequence below.
+
+```
+Modify Code
+
+↓
+
+Run Locally
+
+↓
+
+Verify MCP
+
+↓
+
+Fix Issues
+
+↓
+
+Commit
+
+↓
+
+Push GitHub
+
+↓
+
+Deploy Render
+
+↓
+
+Compare Results
+```
+
+Every cloud deployment was preceded by a successful local execution.
+
+---
+
+# 10.5 Why Local Testing Was Important
+
+When problems occurred,
+
+the first question became:
+
+```
+Does it work locally?
+```
+
+If the answer was:
+
+YES
+
+↓
+
+The problem was likely environmental.
+
+If the answer was:
+
+NO
+
+↓
+
+The problem was likely within the application itself.
+
+This simple distinction dramatically reduced debugging time.
+
+---
+
+# 10.6 Transition to Cloud Deployment
+
+Once local functionality was verified,
+
+the application was deployed to Render.
+
+Architecture became:
+
+```
+Browser
+
+↓
+
+Render
+
+↓
+
+Flask
+
+↓
+
+Google ADK
+
+↓
+
+Gemini
+
+↓
+
+MCP Servers
+```
+
+The expectation was that cloud execution would behave identically to local execution.
+
+However,
+
+this assumption proved incorrect.
+
+---
+
+# 10.7 First Render Deployment
+
+The first deployment used Render's default Python runtime.
+
+Architecture
+
+```
+Render
+
+↓
+
+Python Runtime
+
+↓
+
+Flask
+
+↓
+
+Google ADK
+
+↓
+
+Gemini
+```
+
+At first glance,
+
+everything appeared correct.
+
+The application started successfully.
+
+The UI loaded.
+
+Gunicorn launched normally.
+
+However,
+
+the first AI request failed.
+
+---
+
+# 10.8 Initial Symptoms
+
+The observed behaviour included:
+
+- Worker timeouts
+- MCP session failures
+- Tool initialization errors
+- Hanging requests
+- Partial execution
+
+Typical log messages included:
+
+```
+Failed to create MCP session
+```
+
+```
+Worker Timeout
+```
+
+```
+Unhandled TaskGroup exception
+```
+
+Initially,
+
+the source of the problem was unclear.
+
+---
+
+# 10.9 Debugging Strategy
+
+Rather than changing many components simultaneously,
+
+each MCP server was isolated.
+
+Testing became:
+
+```
+Gemini Only
+
+↓
+
+Scholarship Only
+
+↓
+
+Filesystem Only
+
+↓
+
+Tavily Only
+
+↓
+
+Maps Only
+
+↓
+
+Combined
+```
+
+This systematic approach allowed the project to identify the failing component with confidence.
+
+---
+
+# 10.10 Phase 1 — Gemini Validation
+
+Objective
+
+Verify the language model.
+
+Result
+
+```
+SUCCESS
+```
+
+Gemini responded correctly.
+
+Therefore,
+
+the issue was not the model.
+
+---
+
+# 10.11 Phase 2 — Scholarship MCP
+
+Objective
+
+Verify Local Python MCP.
+
+Result
+
+```
+SUCCESS
+```
+
+Scholarship MCP worked both locally and on Render.
+
+Conclusion
+
+Python-based Local MCPs were functioning correctly.
+
+---
+
+# 10.12 Phase 3 — Filesystem MCP
+
+Objective
+
+Verify report generation.
+
+Local
+
+```
+SUCCESS
+```
+
+Render
+
+```
+FAILED
+```
+
+Symptoms
+
+- Session creation failed.
+- Worker timeout.
+- Requests stalled.
+
+At this stage,
+
+Filesystem MCP became the primary suspect.
+
+---
+
+# 10.13 Phase 4 — Tavily MCP
+
+Objective
+
+Verify Remote MCP.
+
+Result
+
+```
+SUCCESS
+```
+
+Web search functioned correctly.
+
+This ruled out Remote HTTP MCP communication as the source of the issue.
+
+---
+
+# 10.14 Phase 5 — Google Maps MCP
+
+Objective
+
+Verify Maps integration.
+
+Several authentication issues were encountered:
+
+- API keys
+- ADC confusion
+- Model updates
+
+After correcting the configuration,
+
+Google Maps MCP executed successfully.
+
+Conclusion
+
+Maps was not the root cause of the deployment issue.
+
+---
+
+# 10.15 Root Cause Analysis
+
+At this point,
+
+all evidence pointed toward the Filesystem MCP.
+
+Unlike every other MCP server,
+
+Filesystem MCP executes using:
+
+```
+npx @modelcontextprotocol/server-filesystem
+```
+
+This introduces a dependency on:
+
+- Node.js
+- npm
+- npx
+
+The Render Python runtime did not provide the execution environment expected by this MCP server.
+
+This explained:
+
+- Session failures
+- Hanging tool calls
+- Worker timeouts
+
+The issue was environmental rather than architectural.
+
+---
+
+# 10.16 Why Docker Was Considered
+
+Several possible solutions were evaluated.
+
+Option A
+
+Remove Filesystem MCP.
+
+Option B
+
+Replace Filesystem MCP with native Python file writing.
+
+Option C
+
+Standardize the runtime using Docker.
+
+The third option preserved the original architecture while ensuring every runtime dependency was available.
+
+---
+
+# 10.17 Docker Architecture
+
+Docker introduced a unified execution environment.
+
+```
+Docker Container
+
+├── Python
+
+├── Node.js
+
+├── npm
+
+├── npx
+
+├── Flask
+
+├── Google ADK
+
+├── MCP Servers
+
+└── Reports
+```
+
+Instead of adapting the application to the environment,
+
+Docker adapted the environment to the application.
+
+---
+
+# 10.18 Before Docker vs After Docker
+
+Before Docker
+
+```
+Python Runtime
+
+↓
+
+Filesystem MCP
+
+↓
+
+Failure
+```
+
+After Docker
+
+```
+Python
+
++
+
+Node
+
++
+
+npm
+
++
+
+npx
+
+↓
+
+Filesystem MCP
+
+↓
+
+Success
+```
+
+The architecture remained identical.
+
+Only the runtime changed.
+
+---
+
+# 10.19 Final Deployment Architecture
+
+The final deployment consists of:
+
+```
+Browser
+
+↓
+
+Render
+
+↓
+
+Docker
+
+↓
+
+Flask
+
+↓
+
+Google ADK
+
+↓
+
+Gemini
+
+↓
+
+MCP Servers
+
+↓
+
+Markdown Reports
+```
+
+Every major component now executes within a controlled, reproducible environment.
+
+---
+
+# 10.20 Key Lessons
+
+The deployment journey demonstrated several important engineering principles:
+
+- Local success does not guarantee cloud success.
+- Runtime dependencies are as important as application code.
+- Isolating components simplifies debugging.
+- Incremental validation is more effective than full-system debugging.
+- Docker is valuable not because it changes the application, but because it standardizes the environment in which the application runs.
+
+Ultimately, Docker was not a workaround—it became the correct deployment architecture for an application that combines Python-based and Node.js-based MCP servers within a single AI system.

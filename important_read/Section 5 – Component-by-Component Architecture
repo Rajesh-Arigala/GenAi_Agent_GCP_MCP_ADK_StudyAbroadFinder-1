@@ -1,0 +1,608 @@
+# Section 5 — Component-by-Component Architecture
+
+---
+
+# 5.1 Introduction
+
+The Study Abroad Finder application is composed of multiple independent components.
+
+Each component has a well-defined responsibility and communicates with other components through clearly defined interfaces.
+
+The architecture intentionally follows the **Single Responsibility Principle (SRP)**:
+
+- Each file performs one primary function.
+- Communication occurs through explicit method calls.
+- Components remain loosely coupled.
+- Individual components can be tested independently.
+
+This modular design greatly simplified debugging and allowed each MCP server to be validated separately before integrating the complete system.
+
+---
+
+# 5.2 Complete Component Interaction
+
+```
+                 Browser
+                    │
+                    ▼
+             Flask Application
+              (server.py)
+                    │
+                    ▼
+              run_query()
+                    │
+                    ▼
+              agent.py
+                    │
+                    ▼
+         Google ADK Runner
+                    │
+                    ▼
+            Gemini 2.5 Flash
+                    │
+        ┌───────────┼────────────┐
+        │           │            │
+        ▼           ▼            ▼
+
+    Tavily      Google Maps   Scholarship
+
+                    │
+                    ▼
+
+             Filesystem MCP
+
+                    │
+                    ▼
+
+            Markdown Report
+```
+
+---
+
+# 5.3 server.py
+
+## Purpose
+
+`server.py` is the **application entry point**.
+
+It acts as the bridge between the web interface and the AI agent.
+
+The file intentionally contains **no business logic**.
+
+Its responsibility is to:
+
+- Start the Flask application.
+- Serve the HTML interface.
+- Accept user requests.
+- Forward the request to the AI layer.
+- Return the AI response.
+
+---
+
+## Responsibilities
+
+- Initialize Flask.
+- Register routes.
+- Validate incoming requests.
+- Call `run_query(question)`.
+- Return JSON responses.
+
+---
+
+## Request Flow
+
+```
+Browser
+
+↓
+
+POST /ask
+
+↓
+
+Flask Route
+
+↓
+
+Extract Question
+
+↓
+
+run_query(question)
+
+↓
+
+Return JSON
+```
+
+---
+
+## Why keep server.py simple?
+
+Keeping the Flask layer lightweight provides several benefits:
+
+- Easier debugging
+- Easier testing
+- Easier migration to FastAPI or another framework
+- Clear separation between UI and AI logic
+
+---
+
+# 5.4 agent.py
+
+## Purpose
+
+`agent.py` is the **intelligence layer** of the application.
+
+This file is responsible for orchestrating the complete AI workflow.
+
+It is the only file that understands:
+
+- Gemini
+- Google ADK
+- MCP Servers
+- Tool orchestration
+
+---
+
+## Responsibilities
+
+- Load environment variables.
+- Configure Gemini.
+- Create MCP Toolsets.
+- Configure ADK.
+- Create sessions.
+- Manage tool execution.
+- Return final answers.
+
+---
+
+## Internal Workflow
+
+```
+Load .env
+
+↓
+
+Initialize MCP Toolsets
+
+↓
+
+Create LlmAgent
+
+↓
+
+Create Session
+
+↓
+
+Create Runner
+
+↓
+
+Receive Question
+
+↓
+
+Gemini Reasoning
+
+↓
+
+Tool Invocation
+
+↓
+
+Collect Results
+
+↓
+
+Return Response
+```
+
+---
+
+## Why is agent.py important?
+
+The AI agent is completely isolated from Flask.
+
+This means:
+
+- The UI can change.
+- The deployment platform can change.
+- The AI logic remains unchanged.
+
+---
+
+# 5.5 index.html
+
+## Purpose
+
+Provides the web interface.
+
+Responsibilities:
+
+- Display input box.
+- Accept questions.
+- Send AJAX request.
+- Display response.
+
+The page contains **no AI logic**.
+
+---
+
+## Communication
+
+```
+User
+
+↓
+
+JavaScript Fetch
+
+↓
+
+POST /ask
+
+↓
+
+JSON Response
+
+↓
+
+Render Output
+```
+
+---
+
+# 5.6 scholarship_server.py
+
+## Purpose
+
+Acts as a **custom Local MCP Server**.
+
+Unlike Tavily and Google Maps, this server is developed specifically for this application.
+
+---
+
+## Responsibilities
+
+Provide structured information for:
+
+- Scholarships
+- Cost of Living
+- Student Visa
+- Immigration Requirements
+
+---
+
+## Communication
+
+Uses
+
+```
+STDIO
+```
+
+instead of HTTP.
+
+The ADK launches the process locally and exchanges structured messages through standard input/output.
+
+---
+
+## Why Local MCP?
+
+This demonstrates that MCP servers do not need to be cloud-hosted.
+
+They can execute entirely within the local environment or Docker container.
+
+---
+
+# 5.7 Tavily MCP
+
+## Purpose
+
+Acts as the web search engine.
+
+Provides:
+
+- University discovery
+- Rankings
+- Tuition information
+- Official websites
+- Latest web information
+
+---
+
+## Communication
+
+Uses
+
+```
+Streamable HTTP
+```
+
+---
+
+## Why Tavily?
+
+Gemini's knowledge is limited by its training cutoff.
+
+Tavily provides live, current information.
+
+---
+
+# 5.8 Google Maps MCP
+
+## Purpose
+
+Provides geographic intelligence.
+
+Capabilities:
+
+- Current weather
+- Nearby attractions
+- Location lookup
+- Route information
+- Geographical context
+
+---
+
+## Communication
+
+Uses
+
+```
+Streamable HTTP
+```
+
+---
+
+## Why separate Maps?
+
+Maps data changes continuously.
+
+Keeping it in a dedicated MCP server ensures real-time information.
+
+---
+
+# 5.9 Filesystem MCP
+
+## Purpose
+
+Generates Markdown reports.
+
+Responsibilities:
+
+- Create files.
+- Write reports.
+- Save summaries.
+
+---
+
+## Communication
+
+Uses
+
+```
+STDIO
+```
+
+through
+
+```
+npx @modelcontextprotocol/server-filesystem
+```
+
+---
+
+## Why was it important?
+
+This MCP became the most significant debugging exercise in the project.
+
+Unlike the other MCP servers, it depends on a Node.js runtime.
+
+This dependency directly influenced the deployment strategy and ultimately led to Docker adoption.
+
+The complete debugging journey is covered in Section 12.
+
+---
+
+# 5.10 Dockerfile
+
+## Purpose
+
+Defines the application's runtime environment.
+
+Responsibilities:
+
+- Install Python.
+- Install Node.js.
+- Install npm.
+- Install npx.
+- Install dependencies.
+- Create reports directory.
+- Launch Gunicorn.
+
+---
+
+## Why Docker became necessary
+
+Initially, the application was deployed using Render's Python runtime.
+
+The Filesystem MCP requires:
+
+```
+npx
+```
+
+which depends on Node.js.
+
+Docker allowed both Python and Node.js to coexist inside a single container, enabling all MCP servers to execute successfully.
+
+---
+
+# 5.11 requirements.txt
+
+## Purpose
+
+Defines every Python dependency required by the application.
+
+Examples include:
+
+- google-adk
+- google-genai
+- flask
+- gunicorn
+- python-dotenv
+- mcp
+
+This ensures reproducible environments across development and production.
+
+---
+
+# 5.12 .env
+
+## Purpose
+
+Stores configuration and secrets.
+
+Examples:
+
+- GOOGLE_API_KEY
+- GOOGLE_MAPS_API_KEY
+- TAVILY_API_KEY
+
+The `.env` file is intentionally excluded from version control to prevent accidental exposure of credentials.
+
+---
+
+# 5.13 reports/
+
+## Purpose
+
+Stores generated Markdown reports.
+
+Examples:
+
+```
+technical_university_of_munich_report.md
+
+machine_learning_usa_report.md
+
+ai_germany_report.md
+```
+
+---
+
+## Local Environment
+
+Reports are stored in:
+
+```
+project_root/reports/
+```
+
+---
+
+## Docker / Render
+
+Reports are stored inside:
+
+```
+/app/reports/
+```
+
+These reports exist within the running container.
+
+Because Render containers are ephemeral, the reports should be considered temporary unless persistent storage is configured.
+
+---
+
+# 5.14 Component Dependency Diagram
+
+```
+index.html
+
+↓
+
+server.py
+
+↓
+
+agent.py
+
+↓
+
+Google ADK
+
+↓
+
+Gemini
+
+↓
+
+MCP Tool Selection
+
+↓
+
+────────────────────────────────
+
+Tavily MCP
+
+Scholarship MCP
+
+Google Maps MCP
+
+Filesystem MCP
+
+────────────────────────────────
+
+↓
+
+Markdown Report
+
+↓
+
+Flask Response
+
+↓
+
+Browser
+```
+
+---
+
+# 5.15 Design Philosophy
+
+Each component was intentionally designed to be:
+
+- Independent
+- Replaceable
+- Testable
+- Deployable
+
+Examples:
+
+- Flask can be replaced with FastAPI.
+- Gemini can be replaced with another supported model.
+- Tavily can be replaced with a different search provider.
+- Filesystem MCP can be replaced with cloud storage.
+- Scholarship MCP can be extended or replaced without affecting the rest of the application.
+
+This modularity is one of the project's strongest architectural characteristics.
+
+---
+
+# 5.16 Key Takeaways
+
+Every major component has a single responsibility.
+
+The presentation layer, orchestration layer, reasoning layer, execution layer, and deployment layer remain independent.
+
+This separation made it possible to:
+
+- Debug each MCP server individually.
+- Validate deployments incrementally.
+- Replace infrastructure components without redesigning the application.
+
+The resulting architecture is modular, extensible, and representative of modern enterprise AI systems built around reasoning models augmented with specialized execution tools.

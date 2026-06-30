@@ -1,0 +1,579 @@
+# Section 11 — Complete Debugging Journey & Engineering Decisions
+
+---
+
+# 11.1 Introduction
+
+Software engineering is not simply writing code.
+
+It is the process of identifying problems, forming hypotheses, testing assumptions, eliminating possibilities, and eventually converging on the correct solution.
+
+The Study Abroad Finder project was intentionally developed using an incremental debugging strategy.
+
+Rather than attempting to solve multiple unknowns simultaneously, every subsystem was validated independently.
+
+This chapter documents that complete engineering journey.
+
+---
+
+# 11.2 Engineering Philosophy
+
+The project followed one fundamental debugging principle.
+
+> Never debug multiple unknowns simultaneously.
+
+Instead,
+
+every experiment should answer only one question.
+
+For example
+
+```
+Does Gemini work?
+```
+
+NOT
+
+```
+Does Gemini + Maps + Tavily + Scholarship + Filesystem work?
+```
+
+This philosophy dramatically reduced debugging complexity.
+
+---
+
+# 11.3 Original Assumption
+
+Initially,
+
+it was assumed that
+
+```
+Works Locally
+
+↓
+
+Will Work on Render
+```
+
+This assumption proved incorrect.
+
+One of the most important lessons from the project is that
+
+> Application code and execution environment are equally important.
+
+---
+
+# 11.4 First Local Success
+
+The first milestone was obtaining a successful local execution.
+
+The application correctly:
+
+- Loaded Flask
+- Connected to Gemini
+- Loaded MCP servers
+- Generated responses
+- Produced Markdown reports
+
+At this point,
+
+the application architecture itself appeared correct.
+
+---
+
+# 11.5 First Render Deployment
+
+The application was deployed using Render's default Python runtime.
+
+Observations:
+
+✓ UI Loaded
+
+✓ Gunicorn Started
+
+✓ Flask Started
+
+✗ AI Requests Failed
+
+This immediately suggested
+
+the deployment environment differed from local execution.
+
+---
+
+# 11.6 Initial Error Messages
+
+Typical errors included:
+
+```
+Failed to create MCP session
+```
+
+```
+Unhandled TaskGroup exception
+```
+
+```
+Worker Timeout
+```
+
+```
+SystemExit
+
+SIGKILL
+```
+
+Initially,
+
+these errors appeared unrelated.
+
+However,
+
+they all originated from the same underlying issue.
+
+---
+
+# 11.7 Hypothesis-Based Debugging
+
+Instead of randomly modifying code,
+
+the project adopted hypothesis-driven debugging.
+
+Each hypothesis had to be proven or disproven.
+
+Example
+
+Hypothesis
+
+```
+Gemini API is broken.
+```
+
+Experiment
+
+Run Gemini only.
+
+Result
+
+```
+False
+```
+
+Gemini worked correctly.
+
+Therefore,
+
+Gemini was eliminated as a suspect.
+
+---
+
+# 11.8 Debugging Phase 1 — Gemini
+
+Objective
+
+Verify
+
+- API Key
+- Gemini Model
+- ADK
+
+Result
+
+Initially,
+
+API keys had to be corrected.
+
+The deprecated model
+
+```
+gemini-2.0-flash
+```
+
+was replaced with
+
+```
+gemini-2.5-flash
+```
+
+After these corrections,
+
+Gemini executed successfully.
+
+Conclusion
+
+Gemini was functioning correctly.
+
+---
+
+# 11.9 Debugging Phase 2 — Scholarship MCP
+
+Objective
+
+Determine whether Local Python MCP servers worked.
+
+Result
+
+Scholarship MCP executed successfully.
+
+Both
+
+Local
+
+and
+
+Render
+
+returned correct results.
+
+Conclusion
+
+STDIO communication itself was not broken.
+
+Python-based Local MCP servers were functioning correctly.
+
+---
+
+# 11.10 Debugging Phase 3 — Filesystem MCP
+
+Objective
+
+Validate Markdown generation.
+
+Local
+
+```
+Success
+```
+
+Render
+
+```
+Failure
+```
+
+Observed symptoms
+
+- Session creation failed
+- Worker timeout
+- Request never completed
+
+This became the first major breakthrough.
+
+Filesystem MCP behaved differently from Scholarship MCP.
+
+---
+
+# 11.11 Engineering Observation
+
+Question
+
+Why would one Local MCP work
+
+while another Local MCP fail?
+
+Both use
+
+```
+STDIO
+```
+
+Therefore
+
+STDIO itself was not the issue.
+
+The difference had to exist somewhere else.
+
+---
+
+# 11.12 Root Cause Investigation
+
+Scholarship MCP
+
+```
+Python
+```
+
+Filesystem MCP
+
+```
+Node.js
+
+↓
+
+npm
+
+↓
+
+npx
+```
+
+This revealed the hidden dependency.
+
+The issue was not
+
+MCP.
+
+The issue was
+
+Runtime.
+
+---
+
+# 11.13 Debugging Phase 4 — Tavily MCP
+
+Objective
+
+Verify Remote MCP.
+
+Result
+
+Success.
+
+Web search executed correctly.
+
+Conclusion
+
+Remote MCP architecture worked.
+
+HTTP communication worked.
+
+---
+
+# 11.14 Debugging Phase 5 — Google Maps MCP
+
+This phase uncovered multiple independent issues.
+
+Issue 1
+
+Incorrect API credentials.
+
+Issue 2
+
+Confusion between
+
+Google AI API Key
+
+and
+
+Google Cloud API Key.
+
+Issue 3
+
+Authentication behaviour differences between
+
+API Keys
+
+and
+
+Application Default Credentials (ADC).
+
+After correcting the configuration,
+
+Google Maps MCP executed successfully.
+
+Conclusion
+
+Maps authentication was independent of the Filesystem problem.
+
+---
+
+# 11.15 Tool Isolation Strategy
+
+Every MCP server was isolated.
+
+```
+Gemini
+
+↓
+
+Scholarship
+
+↓
+
+Filesystem
+
+↓
+
+Tavily
+
+↓
+
+Maps
+```
+
+Only after every individual component succeeded
+
+were they combined.
+
+This strategy identified
+
+Filesystem MCP
+
+as the only remaining unstable component.
+
+---
+
+# 11.16 Why Removing Filesystem MCP Was Considered
+
+At one point,
+
+three possible solutions were evaluated.
+
+Option A
+
+Remove Filesystem MCP.
+
+Option B
+
+Replace Filesystem MCP with native Python.
+
+Option C
+
+Fix the runtime.
+
+Option A
+
+would have restored application stability,
+
+but at the cost of losing report generation.
+
+Option B
+
+would have preserved functionality,
+
+but abandoned the demonstration of MCP.
+
+Neither option preserved the intended architecture.
+
+---
+
+# 11.17 Docker Hypothesis
+
+New hypothesis
+
+The application is correct.
+
+The runtime is incorrect.
+
+Therefore,
+
+instead of changing the application,
+
+change the runtime.
+
+Docker became the preferred solution.
+
+---
+
+# 11.18 Docker Validation
+
+Docker image included
+
+✓ Python
+
+✓ Node
+
+✓ npm
+
+✓ npx
+
+Local testing succeeded.
+
+Render deployment succeeded.
+
+Filesystem MCP started correctly.
+
+Reports were generated.
+
+The hypothesis was confirmed.
+
+---
+
+# 11.19 Major Engineering Lessons
+
+Lesson 1
+
+Working code can still fail because of environment differences.
+
+---
+
+Lesson 2
+
+Every runtime dependency must be considered,
+
+not only Python packages.
+
+---
+
+Lesson 3
+
+Tool isolation dramatically reduces debugging complexity.
+
+---
+
+Lesson 4
+
+Logs rarely identify the true root cause.
+
+They reveal symptoms.
+
+Engineering reasoning identifies causes.
+
+---
+
+Lesson 5
+
+Docker is not merely a deployment tool.
+
+It is an environment standardization tool.
+
+---
+
+# 11.20 What Was Actually Proven?
+
+The project proved that
+
+Google ADK
+
+Gemini
+
+Remote MCP
+
+Local MCP
+
+Docker
+
+Render
+
+can all work together successfully,
+
+provided that every runtime dependency is satisfied.
+
+The largest challenge was never the AI model.
+
+It was understanding how different execution environments affected MCP servers built with different technologies.
+
+---
+
+# 11.21 Final Engineering Reflection
+
+Looking back,
+
+the project was never simply about deploying an AI application.
+
+It became an exercise in understanding:
+
+- AI orchestration
+- Protocol design
+- Runtime dependencies
+- Cloud deployment
+- Containerization
+- Incremental debugging
+- Systems thinking
+
+Perhaps the most valuable outcome was not the final application itself,
+
+but the engineering methodology developed during the journey.
+
+That methodology—isolating variables, validating assumptions, and standardizing environments—is transferable to any future AI system built with Google ADK, MCP, or other agent frameworks.

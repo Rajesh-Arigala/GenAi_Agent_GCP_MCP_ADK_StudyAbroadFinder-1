@@ -1,0 +1,261 @@
+# Study Abroad Finder using Google ADK + MCP Servers
+
+# Section 1 — Executive Summary
+
+**Document Version:** 1.0
+
+**Project Name:**
+Study Abroad Finder using Google ADK, Gemini 2.5 Flash and Multiple MCP Servers
+
+**Author:**
+Rajesh Arigala
+
+**Date:**
+July 2026
+
+---
+
+# 1. Introduction
+
+This document describes the complete design, implementation, deployment, debugging, testing, and final architecture of the **Study Abroad Finder**, an AI-powered application built using **Google Agent Development Kit (Google ADK)** and multiple **Model Context Protocol (MCP)** servers.
+
+The project was designed as a production-oriented demonstration of how a Large Language Model (LLM) can orchestrate multiple external tools to solve a complex user request.
+
+Unlike traditional chatbots, this application does not rely solely on the language model's internal knowledge. Instead, it augments the model with specialized MCP servers, each responsible for a specific domain of expertise.
+
+The application demonstrates how multiple tools can collaborate within a single AI agent to deliver comprehensive, structured, and up-to-date responses.
+
+---
+
+# 2. Project Vision
+
+The objective of this project is to demonstrate a production-ready implementation of an AI agent capable of assisting students in planning their higher education abroad.
+
+Instead of building a single-purpose chatbot, the project aims to showcase a modular AI architecture where individual services contribute different capabilities through MCP servers.
+
+The long-term vision is to create an extensible AI platform where additional MCP servers can be added without redesigning the core application.
+
+Examples include:
+
+- University search
+- Scholarship search
+- Visa guidance
+- Cost of living estimation
+- Weather information
+- Nearby attractions
+- Route planning
+- Accommodation search
+- Flight information
+- Local transportation
+- Currency exchange
+- Insurance providers
+
+The Study Abroad Finder serves as a reference implementation for this architecture.
+
+---
+
+# 3. Primary Objectives
+
+The project was built to validate the following technical capabilities.
+
+## Objective 1
+
+Build an AI application using Google ADK.
+
+---
+
+## Objective 2
+
+Integrate Google's Gemini models into a production application.
+
+---
+
+## Objective 3
+
+Connect multiple MCP servers to a single AI agent.
+
+---
+
+## Objective 4
+
+Demonstrate communication between the language model and external tools using the Model Context Protocol.
+
+---
+
+## Objective 5
+
+Deploy the complete application to a public cloud platform.
+
+---
+
+## Objective 6
+
+Containerize the application using Docker for consistent deployment.
+
+---
+
+## Objective 7
+
+Understand the practical limitations of multi-tool orchestration within Google ADK.
+
+---
+
+# 4. Technology Stack
+
+The final application consists of the following technologies.
+
+| Layer | Technology |
+|---------|------------|
+| Programming Language | Python |
+| AI Framework | Google Agent Development Kit (Google ADK) |
+| Foundation Model | Gemini 2.5 Flash |
+| Frontend | HTML + CSS + Flask |
+| Backend | Flask |
+| Deployment | Render |
+| Containerization | Docker |
+| Tool Communication | MCP (Model Context Protocol) |
+| Remote MCP | Streamable HTTP |
+| Local MCP | STDIO |
+| Web Search | Tavily MCP |
+| Maps & Weather | Google Maps MCP |
+| Scholarships | Custom Scholarship MCP |
+| Report Generation | Filesystem MCP |
+| Version Control | Git |
+| Repository | GitHub |
+
+---
+
+# 5. High-Level Architecture
+
+The completed system follows the architecture below.
+
+```
+                        User
+                          │
+                          ▼
+                    Flask Web UI
+                          │
+                          ▼
+                     server.py
+                          │
+                          ▼
+                      agent.py
+                          │
+                          ▼
+                 Google ADK Runner
+                          │
+                          ▼
+                  Gemini 2.5 Flash
+                          │
+          ┌───────────────┼────────────────┐
+          │               │                │
+          ▼               ▼                ▼
+     Tavily MCP     Google Maps MCP   Scholarship MCP
+                                              │
+                                              ▼
+                                      Filesystem MCP
+```
+
+The Gemini model is responsible for reasoning.
+
+The MCP servers are responsible for execution.
+
+This separation between reasoning and execution is one of the key architectural principles demonstrated by this project.
+
+---
+
+# 6. Major Achievements
+
+By the end of this implementation, the project successfully demonstrated:
+
+✅ Google ADK
+
+✅ Gemini 2.5 Flash integration
+
+✅ Multiple MCP server integration
+
+✅ Remote MCP servers
+
+✅ Local MCP servers
+
+✅ Streamable HTTP MCP communication
+
+✅ STDIO MCP communication
+
+✅ Flask-based AI application
+
+✅ Docker containerization
+
+✅ Public cloud deployment on Render
+
+✅ Multi-tool orchestration
+
+✅ Markdown report generation
+
+✅ Weather enrichment
+
+✅ Scholarship retrieval
+
+✅ University discovery
+
+---
+
+# 7. Challenges Encountered
+
+During development, several engineering challenges were identified.
+
+These included:
+
+- Python package dependency issues
+- Gunicorn deployment configuration
+- Google API key management
+- Google Maps authentication
+- Gemini model deprecation
+- GitHub secret protection
+- Render runtime configuration
+- Docker containerization
+- Filesystem MCP compatibility
+- Multi-tool orchestration reliability
+- Tool routing behavior within Google ADK
+
+Each challenge was investigated, understood, documented, and resolved where possible.
+
+The complete debugging journey is documented in later sections of this report.
+
+---
+
+# 8. Final Outcome
+
+The final system demonstrates that Google ADK can successfully orchestrate multiple MCP servers within a single AI agent while being deployed as a cloud-native Docker application.
+
+The project also highlights an important architectural insight:
+
+> Building reliable AI systems is not only about selecting a powerful language model. It is equally about designing robust tool orchestration, deployment environments, and execution workflows.
+
+The application serves as a strong proof of concept for enterprise-grade AI systems built using Google ADK and the Model Context Protocol.
+
+---
+
+# 9. Document Roadmap
+
+The remainder of this document explains the project in detail.
+
+Topics include:
+
+- Complete system architecture
+- Folder structure
+- Google ADK internals
+- MCP architecture
+- Individual MCP servers
+- Request lifecycle
+- Local development
+- Render deployment
+- Docker implementation
+- Debugging timeline
+- Before vs After Docker analysis
+- Testing methodology
+- Lessons learned
+- Production recommendations
+- Future roadmap
+
+By the end of this document, the reader should have a complete understanding of how the application was designed, implemented, deployed, debugged, and validated.

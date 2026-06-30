@@ -1,0 +1,652 @@
+# Section 6 — Google ADK Internals
+
+---
+
+# 6.1 Introduction
+
+Google Agent Development Kit (Google ADK) is the orchestration framework used to build AI agents.
+
+Unlike traditional chatbot frameworks that simply send prompts to a language model, ADK introduces an execution framework capable of:
+
+- Maintaining sessions
+- Managing conversations
+- Registering tools
+- Invoking MCP servers
+- Coordinating multiple external systems
+- Returning structured responses
+
+Google ADK therefore acts as the operating system for the AI agent.
+
+Gemini is only one component inside ADK.
+
+---
+
+# 6.2 ADK Architecture
+
+The architecture inside ADK can be represented as:
+
+```
+                User Question
+                       │
+                       ▼
+                 Google ADK
+                       │
+         ┌─────────────┼─────────────┐
+         │             │             │
+         ▼             ▼             ▼
+
+     Session       LlmAgent      Runner
+
+         │             │             │
+         └─────────────┼─────────────┘
+                       │
+                       ▼
+                Gemini 2.5 Flash
+                       │
+                Tool Planning
+                       │
+                Tool Invocation
+                       │
+                MCP Servers
+                       │
+                Tool Results
+                       │
+                 Final Response
+```
+
+Google ADK coordinates the entire workflow.
+
+---
+
+# 6.3 Core Components of ADK
+
+The application primarily uses four ADK components.
+
+```
+LlmAgent
+
+Runner
+
+SessionService
+
+Toolsets
+```
+
+Each serves a distinct purpose.
+
+---
+
+# 6.4 LlmAgent
+
+## Purpose
+
+Represents the AI agent itself.
+
+It defines:
+
+- Which model to use.
+- Which instructions guide the model.
+- Which tools are available.
+
+Example:
+
+```python
+agent = LlmAgent(
+    model="gemini-2.5-flash",
+    instruction=AGENT_INSTRUCTION,
+    tools=_toolsets
+)
+```
+
+The LlmAgent is analogous to hiring an employee.
+
+The employee receives:
+
+- Knowledge
+- Instructions
+- Available tools
+
+The employee does **not** perform execution directly.
+
+---
+
+# 6.5 Runner
+
+The Runner executes the conversation.
+
+Responsibilities:
+
+- Accept user messages
+- Call Gemini
+- Execute tools
+- Return events
+- Manage asynchronous execution
+
+Example:
+
+```python
+runner = Runner(
+    agent=agent,
+    app_name="study_abroad_finder",
+    session_service=session_service
+)
+```
+
+Think of Runner as the project manager.
+
+The Runner coordinates everything.
+
+---
+
+# 6.6 Session Service
+
+Every conversation exists inside a session.
+
+Example:
+
+```python
+session_service = InMemorySessionService()
+```
+
+Creates:
+
+```
+User
+
+↓
+
+Conversation
+
+↓
+
+Memory
+
+↓
+
+Context
+```
+
+Each request belongs to one session.
+
+---
+
+Example:
+
+```python
+await session_service.create_session(
+    app_name="study_abroad_finder",
+    user_id="student",
+    session_id="session_1"
+)
+```
+
+Without a session,
+
+the Runner cannot execute.
+
+---
+
+# 6.7 Message Object
+
+User input is converted into a structured message.
+
+Example:
+
+```python
+message = types.Content(
+    role="user",
+    parts=[types.Part(text=question)]
+)
+```
+
+Instead of sending raw text,
+
+ADK exchanges structured messages.
+
+This makes the framework extensible for:
+
+- Images
+- Audio
+- Video
+- Documents
+- Multiple message parts
+
+---
+
+# 6.8 Tool Registration
+
+Every MCP server becomes a Tool.
+
+Example:
+
+```python
+tools=[
+    tavily_toolset,
+    scholarship_toolset,
+    maps_toolset,
+    filesystem_toolset,
+]
+```
+
+Gemini never calls APIs directly.
+
+It only knows
+
+```
+Available Tools
+```
+
+registered with the agent.
+
+---
+
+# 6.9 What Happens Internally?
+
+Suppose the user asks:
+
+> I want to study AI in Germany.
+
+The execution flow is:
+
+```
+User
+
+↓
+
+Flask
+
+↓
+
+Runner
+
+↓
+
+Gemini
+
+↓
+
+Reasoning
+
+↓
+
+"I need university rankings."
+
+↓
+
+Calls Tavily
+
+↓
+
+Returns rankings
+
+↓
+
+"I need scholarships."
+
+↓
+
+Calls Scholarship MCP
+
+↓
+
+Returns scholarships
+
+↓
+
+"I need weather."
+
+↓
+
+Calls Maps MCP
+
+↓
+
+Returns weather
+
+↓
+
+"I should save report."
+
+↓
+
+Filesystem MCP
+
+↓
+
+Markdown saved
+
+↓
+
+Gemini
+
+↓
+
+Final Response
+```
+
+Gemini is responsible only for planning.
+
+Execution is delegated.
+
+---
+
+# 6.10 Event Streaming
+
+Runner executes asynchronously.
+
+Example:
+
+```python
+async for event in runner.run_async(...):
+```
+
+Why?
+
+Because tools may:
+
+- Take time
+- Execute remotely
+- Return incremental events
+
+The Runner continuously processes events until the final response arrives.
+
+---
+
+# 6.11 Final Response Detection
+
+Example:
+
+```python
+if event.is_final_response():
+```
+
+ADK generates multiple internal events.
+
+Only one is the final answer.
+
+Intermediate events include:
+
+- Tool call
+- Tool completion
+- Internal reasoning
+- Session updates
+
+The application ignores intermediate events and displays only the final response.
+
+---
+
+# 6.12 Why Async?
+
+Every MCP server may involve:
+
+```
+HTTP Request
+
+↓
+
+Database Query
+
+↓
+
+Search
+
+↓
+
+Weather
+
+↓
+
+File Generation
+```
+
+Blocking execution would freeze the application.
+
+Async execution enables:
+
+- Better responsiveness
+- Parallel waiting
+- Efficient resource usage
+
+---
+
+# 6.13 Tool Selection
+
+One common misconception is that
+
+Gemini chooses APIs.
+
+It does not.
+
+Gemini chooses
+
+```
+Registered Tools
+```
+
+ADK then invokes the appropriate MCP server.
+
+Example
+
+```
+Gemini
+
+↓
+
+"I need weather."
+
+↓
+
+Maps Tool
+
+↓
+
+Maps MCP
+
+↓
+
+Weather Result
+```
+
+Gemini never knows
+
+Google Maps API.
+
+It only knows
+
+Google Maps Tool.
+
+---
+
+# 6.14 How MCP Fits into ADK
+
+```
+Gemini
+
+↓
+
+Tool Name
+
+↓
+
+Toolset
+
+↓
+
+MCP Session
+
+↓
+
+Remote MCP
+
+↓
+
+Actual Service
+```
+
+Therefore
+
+Gemini never communicates directly with:
+
+- Google Maps
+- Tavily
+- Scholarship Server
+
+It communicates only with ADK.
+
+ADK communicates with MCP.
+
+MCP communicates with the service.
+
+---
+
+# 6.15 ADK Responsibility Matrix
+
+| Responsibility | ADK |
+|---------------|------|
+| Session Management | ✅ |
+| Tool Registration | ✅ |
+| Tool Invocation | ✅ |
+| Async Execution | ✅ |
+| Event Streaming | ✅ |
+| Conversation Context | ✅ |
+| Tool Routing | ✅ |
+
+---
+
+# 6.16 What ADK Does NOT Do
+
+ADK does **not**:
+
+- Perform web searches
+- Generate weather
+- Calculate scholarships
+- Save reports
+- Know university rankings
+
+Those are responsibilities of MCP servers.
+
+ADK only coordinates.
+
+---
+
+# 6.17 ADK vs Traditional Chatbot
+
+Traditional Chatbot
+
+```
+User
+
+↓
+
+Prompt
+
+↓
+
+LLM
+
+↓
+
+Answer
+```
+
+Google ADK
+
+```
+User
+
+↓
+
+LLM
+
+↓
+
+Planning
+
+↓
+
+Tools
+
+↓
+
+Execution
+
+↓
+
+Results
+
+↓
+
+LLM
+
+↓
+
+Answer
+```
+
+This additional execution layer enables production-grade AI systems.
+
+---
+
+# 6.18 Lessons Learned During This Project
+
+During development, several important behaviors of ADK became evident.
+
+### 1. ADK Requires Explicit Tool Registration
+
+If a tool is not registered,
+
+Gemini cannot use it.
+
+---
+
+### 2. Tool Descriptions Matter
+
+Gemini selects tools based on:
+
+- Name
+- Description
+- Instructions
+
+Poor descriptions lead to poor tool selection.
+
+---
+
+### 3. Environment Matters
+
+A tool may work locally but fail in production if its runtime dependencies are missing.
+
+The Filesystem MCP highlighted this lesson.
+
+---
+
+### 4. Sessions Are Mandatory
+
+Without a session,
+
+Runner cannot execute.
+
+---
+
+### 5. ADK Is an Orchestrator
+
+ADK itself performs no domain-specific work.
+
+It simply coordinates reasoning and execution.
+
+---
+
+# 6.19 Key Takeaways
+
+Google ADK transforms a language model into an intelligent execution engine.
+
+It introduces:
+
+- Structured sessions
+- Event-driven execution
+- Tool orchestration
+- MCP integration
+- Asynchronous workflows
+
+Rather than replacing the language model, ADK extends its capabilities by allowing it to collaborate with external systems.
+
+Within this project, ADK acted as the central orchestration layer that connected Gemini with four independent MCP servers, enabling the Study Abroad Finder to function as a modular, tool-augmented AI application suitable for production-oriented workflows.
