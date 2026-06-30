@@ -2,7 +2,7 @@ import os
 
 import asyncio
 from flask import Flask, request, jsonify, render_template
-from agent import run_query
+from .agent import run_query
 
 app = Flask(__name__)
 
