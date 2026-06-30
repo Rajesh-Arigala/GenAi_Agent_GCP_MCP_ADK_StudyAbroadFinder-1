@@ -40,20 +40,22 @@ tavily_toolset = McpToolset(
 # MCP Server 2 — Google Maps Remote MCP (weather + places + routes)
 # Falls back gracefully if the server is unavailable.
 # ---------------------------------------------------------------------------
-try:
-    maps_toolset = McpToolset(
-        connection_params=StreamableHTTPConnectionParams(
-            url="https://mapstools.googleapis.com/mcp",
-            headers={
-                "X-Goog-Api-Key": GOOGLE_MAPS_API_KEY,
-                "Content-Type": "application/json",
-                "Accept": "application/json, text/event-stream"
-            }
-        )
-    )
-except Exception as e:
-    print(f"WARNING: Google Maps MCP unavailable — {e}")
-    maps_toolset = None
+# try:
+#     maps_toolset = McpToolset(
+#         connection_params=StreamableHTTPConnectionParams(
+#             url="https://mapstools.googleapis.com/mcp",
+#             headers={
+#                 "X-Goog-Api-Key": GOOGLE_MAPS_API_KEY,
+#                 "Content-Type": "application/json",
+#                 "Accept": "application/json, text/event-stream"
+#             }
+#         )
+#     )
+# except Exception as e:
+#     print(f"WARNING: Google Maps MCP unavailable — {e}")
+#     maps_toolset = None
+
+maps_toolset = None
 
 # ---------------------------------------------------------------------------
 # MCP Server 3 — Custom Scholarship MCP (our own server)
