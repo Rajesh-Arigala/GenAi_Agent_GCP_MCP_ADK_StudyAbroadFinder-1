@@ -142,9 +142,7 @@ Step 7 - Reply to the student:
 #     _toolsets.insert(1, maps_toolset)
 
 _toolsets = [
-    tavily_toolset,
     scholarship_toolset,
-    filesystem_toolset,
 ]
 
 agent = LlmAgent(
