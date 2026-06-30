@@ -4,43 +4,35 @@ from dotenv import load_dotenv
 
 from google.adk.agents import LlmAgent
 from google.adk.tools.mcp_tool import McpToolset
-from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
-from mcp import StdioServerParameters
+from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
 load_dotenv()
 
-REPORTS_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "reports")
-)
+TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 
-os.makedirs(REPORTS_DIR, exist_ok=True)
-
-filesystem_toolset = McpToolset(
-    connection_params=StdioConnectionParams(
-        server_params=StdioServerParameters(
-            command="npx",
-            args=["-y", "@modelcontextprotocol/server-filesystem", REPORTS_DIR]
-        ),
-        timeout=30
+tavily_toolset = McpToolset(
+    connection_params=StreamableHTTPConnectionParams(
+        url=f"https://mcp.tavily.com/mcp/?tavilyApiKey={TAVILY_API_KEY}"
     )
 )
 
-AGENT_INSTRUCTION = f"""
+AGENT_INSTRUCTION = """
 You are a Study Abroad Advisor.
 
-Use only the Filesystem MCP tool.
+Use only Tavily MCP for web search.
 
-When the student asks a question:
-1. Give a short study abroad recommendation from your own knowledge.
-2. Save a markdown report into this folder:
-   {REPORTS_DIR}
-3. Filename: filesystem_test_report.md
-4. Do not use Tavily.
-5. Do not use Google Maps.
-6. Do not use Scholarship MCP.
+When the student asks about universities:
+1. Search the web using Tavily.
+2. Find top universities for the requested field and country.
+3. Summarize the top 3 universities.
+4. Include location, ranking if available, and why each university is strong.
+5. Do not use Scholarship MCP.
+6. Do not use Filesystem MCP.
+7. Do not use Google Maps MCP.
+8. Do not save files.
 """
 
 agent = LlmAgent(
@@ -48,7 +40,7 @@ agent = LlmAgent(
     model="gemini-2.5-flash",
     instruction=AGENT_INSTRUCTION,
     tools=[
-        filesystem_toolset,
+        tavily_toolset,
     ]
 )
 
