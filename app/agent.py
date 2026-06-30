@@ -14,6 +14,7 @@ from google.genai import types
 
 load_dotenv()
 
+
 TAVILY_API_KEY      = os.getenv("TAVILY_API_KEY")
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
 
@@ -146,7 +147,7 @@ if maps_toolset:
 
 agent = LlmAgent(
     name="study_abroad_advisor",
-    model="gemini-flash-latest",
+    model="gemini-2.5-flash",
     instruction=AGENT_INSTRUCTION,
     tools=_toolsets
 )
